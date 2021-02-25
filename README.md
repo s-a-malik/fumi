@@ -1,4 +1,4 @@
-# NLP group project - TBD
+# NLP group project - Zero Shot Image Classification
 
 ## Dataset 
 
