@@ -8,7 +8,7 @@ The datasets are all loaded using the same dataloaders via Torchmeta so if we wa
 
 Datasets:
 
-- CUB
+- CUB (can get label names from torchmeta datasets?)
 - iNaturalist
 - toy
 
@@ -24,6 +24,8 @@ python train.py --arg1 {arg1} --arg2 {arg2}
 ## TODO
 
 - [ ] Implement the model and test end-to-end
+- [ ] add training stuff to improve performance (lr decay, augmentation etc.). 
 - [ ] Reproduce results on their datasets
+- [ ] Use pretrained resnet embeddings straight from dataset
 - [ ] Use model on our datasets
 - [ ] Extend to use BERT embeddings and class descriptions instead of class labels
