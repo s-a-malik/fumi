@@ -12,9 +12,10 @@ class AM3(nn.Module):
         self.text_emb_dim = text_emb_dim
         self.hid_dim = hid_dim
 
-        # image encoder
-        # if raw images
+        # TODO image encoder if raw images
         # self.resnet = xxx
+        
+        # if precomputed embeddings
         self.image_encoder = nn.Linear(im_input_dim, hid_dim)
 
         # TODO fixed word embeddings or BERT
@@ -39,3 +40,4 @@ class AM3(nn.Module):
     def get_prototypes(self, train_loader, val_loader, task="train"):
         """Combine the text and image output to get prototypes per class 
         """
+        raise NotImplementedError()

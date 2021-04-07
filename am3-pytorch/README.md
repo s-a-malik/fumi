@@ -12,13 +12,13 @@ Datasets:
 - iNaturalist
 - toy
 
-## Usage
+## Usage
 
 Hyperparameters are set with argparse flags. Use `--evaluate` flag for testing a trained model on the test set.
 
 Example:
 ```bash
-python train.py --arg1 {arg1} --arg2 {arg2}
+python main.py --arg1 {arg1} --arg2 {arg2}
 ```
 
 ## TODO

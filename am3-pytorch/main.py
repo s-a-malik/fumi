@@ -35,6 +35,8 @@ def init_optim(args, model):
 
 def main(args):
     
+    # TODO set up directories and logs
+    
     # load datasets
     train, val, test = get_dataset(args.dataset, args.data_dir, args.num_ways)
 
@@ -60,7 +62,7 @@ def main(args):
         with tqdm(train_dataloader, total=args.epochs) as pbar:
             for batch_idx, batch in enumerate(pbar):
 
-                # TODO sort this to get specific to AM3 
+                ###### TODO sort this specific to AM3 
                 train_inputs, train_targets = batch['train']
                 train_inputs = train_inputs.to(device=args.device)
                 train_targets = train_targets.to(device=args.device)
@@ -82,11 +84,15 @@ def main(args):
 
                 with torch.no_grad():
                     accuracy = get_accuracy(prototypes, test_embeddings, test_targets)
-                    pbar.set_postfix(accuracy='{0:.4f}'.format(accuracy.item()))
+                    pbar.set_postfix(accuracy='{0:.4f}'.format(accuracy.item())
+    
+                ########
 
+                # TODO save model checkpoints and log training metrics
+                
+                # break after max iters
                 if batch_idx >= args.epochs:
                     break
-        # save model
         
     # load saved model
 
