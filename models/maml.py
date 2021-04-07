@@ -18,8 +18,8 @@ def PureImageNetwork(MetaModule):
             MetaLinear(hidden, n_way)
         )
 
-    def forward(self, inputs):
-      logits = self.net(inputs)
+    def forward(self, inputs, params=None):
+      logits = self.net(inputs, params=params)
       return logits
 
 def train_maml(model, dataloader, step_size, first_order, batch_size):
