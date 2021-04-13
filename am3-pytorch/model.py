@@ -5,17 +5,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from transformers import BertModel
+
 import utils
 
-
 class AM3(nn.Module):
-    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune):
+    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False):
         super(AM3, self).__init__()
         self.im_emb_dim = im_emb_dim
+        self.text_encoder = text_encoder
         self.text_emb_dim = text_emb_dim
         self.text_hid_dim = text_hid_dim        # AM3 uses 300
         self.prototype_dim = prototype_dim      # AM3 uses 512 (resnet)
         self.dropout = dropout                  # AM3 uses 0.7 or 0.9 depending on dataset
+        self.fine_tune = fine_tune
 
         if im_encoder == "precomputed":
             # if using precomputed embeddings (or identity)
@@ -24,52 +27,60 @@ class AM3(nn.Module):
             # TODO image encoder if raw images
             self.image_encoder = nn.Linear(im_emb_dim, prototype_dim)
 
-        # TODO fixed word embeddings or BERT. Use a submodule that returns just the final embedding.
+        # TODO be able to use any hf bert model (requires correct tokenisation)
         if text_encoder == "BERT":
-            self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
+            self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
+            self.text_emb_dim = self.text_encoder.config.hidden_size
+            if not fine_tune:
+                for param in text_encoder.parameters():
+                    param.requires_grad = False
+        # TODO other embeddings
         elif text_encoder == "GloVe":
             self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
+
         elif text_encoder == "RNN":
             self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
 
         # text to prototype neural net
         self.g = nn.Sequential(
-            nn.Linear(text_emb_dim, text_hid_dim),
+            nn.Linear(self.text_emb_dim, self.text_hid_dim),
             nn.ReLU(),
-            nn.Dropout(p=p),
-            nn.Linear(text_hid_dim, prototype_dim)
+            nn.Dropout(p=self.dropout),
+            nn.Linear(self.text_hid_dim, self.prototype_dim)
         )
 
         # text prototype to lamda neural net
         self.h = nn.Sequential(
-            nn.Linear(prototype_dim, text_hid_dim),
+            nn.Linear(self.prototype_dim, self.text_hid_dim),
             nn.ReLU(),
-            nn.Dropout(p=p),
-            nn.Linear(text_hid_dim, 1)
+            nn.Dropout(p=self.dropout),
+            nn.Linear(self.text_hid_dim, 1)
         )
 
     def forward(self, inputs, im_only=False):
         """
         Params:
         -------
-        - inputs dict (TBD)
+        - inputs (tuple): 
         - im_only (bool): flag to only use image input (for query set)
 
         Returns:
         -------
         - im_embeddings (torch.FloatTensor): image in prototype space (batch, NxK, hid_dim)
-        - text_embeddings (torch.FloatTensor): text in prototype space (batch, NxK or num_classes?, hid_dim)
+        - (if not im_only) text_embeddings (torch.FloatTensor): text in prototype space (batch, NxK, hid_dim)
         """
         
-        # need to split inputs into image and text
-        im, text = inputs
+        idx, text, im = inputs
         im_embeddings = self.image_encoder(im)      # (b x N*K x 512)
         if not im_only:
             # text input is same shape as images
-            text_encoding = self.text_encoder(text)
+            if self.text_encoder == "BERT":
+                bert_output = self.text_encoder(**text)
+                # get [CLS] token
+                text_encoding = bert_output[1]        # (b x N*K x 768)
+            else:
+                text_encoding = self.text_encoder(text)
             text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
-
-            # this is if it is classwise description inputs (otherwise need to do in prototype bit)
             lamda = F.sigmoid(self.h(text_embeddings))  # (b x N*K x 1)
             return im_embeddings, text_embeddings, lamda
         else:
@@ -99,9 +110,9 @@ class AM3(nn.Module):
         train_im_embeddings, train_text_embeddings, train_lamda = self(train_inputs)
 
         # query set
-        test_inputs, test_targets, test_idx = batch['test']
+        test_inputs, test_targets = batch['test']
         # need to also get image idx from this
-        test_inputs = test_inputs.to(device=device)
+        test_inputs = test_inputs.to(device=device) # this might not work with input tuples.
         test_targets = test_targets.to(device=device)
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
@@ -126,7 +137,7 @@ class AM3(nn.Module):
         if task == "test":
             # TODO return the query/support images and text per task and lamdas to compare 
             # returning just the query set targets is not that helpful.
-            return loss, acc, preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy()
+            return loss, acc, preds, test_targets.detach().cpu().numpy(), test_inputs.detach().cpu().numpy()
         else:
             return loss, acc
         
