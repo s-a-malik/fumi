@@ -1,5 +1,4 @@
-import torch.utils.data as data
-from torch.utils.data import Subset
+import torch
 import json
 import os
 import numpy as np
