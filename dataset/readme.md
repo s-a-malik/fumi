@@ -1,0 +1,7 @@
+Instantiating a data-loader
+```python
+z = Zanim(root="/content/drive/My Drive/NLP project/Dataset", num_classes_per_task=5, meta_train=True, tokenisation_mode=TokenisationMode.BERT)
+z = ClassSplitter(z, shuffle=True, num_test_per_class=10, num_train_per_class=10)
+z.seed(0)
+loader = BatchMetaDataLoader(z, shuffle=True, batch_size=16)
+```
