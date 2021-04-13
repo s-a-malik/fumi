@@ -113,7 +113,8 @@ class ZanimClassDataset(ClassDataset):
       lengths = [sum([1 for w in tokenize(d)]) for d in self.descriptions]
       max_length = max(lengths)
       self.descriptions = [d.lower() + " " + " ".join(["<PAD>" for _ in range(max_length-lengths[i])]) for (i,d) in enumerate(self.descriptions)]
-      self.dictionary = corpora.Dictionary([tokenize(d) for d in self.descriptions])
+      full_set_of_descriptions = [annotations['categories'][i]['description' if full_description else 'name'] for i in range(N)]
+      self.dictionary = corpora.Dictionary([tokenize(d) for d in full_set_of_descriptions])
       self.descriptions = [[self.dictionary.token2id[z] for z in tokenize(d)] for d in self.descriptions]
 
 
@@ -155,4 +156,4 @@ class ZanimDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
-        return (self.image_ids[index], torch.tensor(self.description), self.data[index]), self.category_id)
+        return (self.image_ids[index], torch.tensor(self.description), self.data[index]), self.category_id
