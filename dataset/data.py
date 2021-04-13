@@ -151,4 +151,4 @@ class ZanimDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
-        return (self.image_ids[index], torch.tensor(self.description), self.data[index]), self.category_id)
+        return (self.image_ids[index], torch.tensor(self.description), self.data[index]), self.category_id
