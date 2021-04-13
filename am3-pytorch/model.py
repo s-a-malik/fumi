@@ -81,8 +81,10 @@ class AM3(nn.Module):
                 B, NK, seq_len = text.shape
                 # bert_output = self.text_encoder(**text)   # if text is with attn mask
                 bert_output = self.text_encoder(text.view(-1, seq_len))
+                print(bert_output)
                 # get [CLS] token
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
+                print(text_encoding)
             else:
                 text_encoding = self.text_encoder(text)
             text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
@@ -215,7 +217,7 @@ if __name__ == "__main__":
     print(model)
     N = 5
     K = 2
-    B = 16
+    B = 5
     idx = torch.ones(B, N*K)
     text = torch.ones(B, N*K, 512, dtype=torch.int64)
     im = torch.ones(B, N*K, 128)   

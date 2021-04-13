@@ -87,9 +87,12 @@ def get_zanim(data_dir: str, num_way: int, num_shots: int, num_shots_test: int, 
     test_split = ClassSplitter(test, shuffle=True, num_test_per_class=int(100/num_shots), num_train_per_class=num_shots)
     test_split.seed(0)
 
-    # all the same dictionary anyway
-    dictionary = train.dictionary
-
+    if text_encoder != "BERT":
+        # all the same dictionary anyway
+        dictionary = train.dictionary
+    else:
+        dictionary = None
+    
     return train_split, val_split, test_split, dictionary
 
 
