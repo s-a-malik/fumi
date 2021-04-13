@@ -43,8 +43,12 @@ class Zanim(CombinationMetaDataset):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
-        dataset = ZanimClassDataset(root, json_path, meta_train=meta_train, meta_val=meta_val, meta_test=meta_test, tokenisation_mode=tokenisation_mode, full_description=full_description, remove_stop_words=remove_stop_words)
-        super().__init__(dataset, num_classes_per_task)
+        self.dataset = ZanimClassDataset(root, json_path, meta_train=meta_train, meta_val=meta_val, meta_test=meta_test, tokenisation_mode=tokenisation_mode, full_description=full_description, remove_stop_words=remove_stop_words)
+        super().__init__(self.dataset, num_classes_per_task)
+
+    @property
+    def dictionary(self):
+      return self.dataset.dictionary.token2id
 
 class ZanimClassDataset(ClassDataset):
 
@@ -108,7 +112,9 @@ class ZanimClassDataset(ClassDataset):
       lengths = [sum([1 for w in tokenize(d)]) for d in self.descriptions]
       max_length = max(lengths)
       self.descriptions = [d.lower() + " " + " ".join(["<PAD>" for _ in range(max_length-lengths[i])]) for (i,d) in enumerate(self.descriptions)]
-      self.dictionary = corpora.Dictionary([tokenize(d) for d in self.descriptions])
+      full_set_of_descriptions = [annotations['categories'][i]['description' if full_description else 'name'] for i in range(N)]
+      self.dictionary = corpora.Dictionary([tokenize(d.lower()) for d in full_set_of_descriptions])
+      self.dictionary.add_documents([tokenize("<PAD>")])
       self.descriptions = [[self.dictionary.token2id[z] for z in tokenize(d)] for d in self.descriptions]
 
 
