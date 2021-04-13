@@ -30,7 +30,7 @@ def get_dataset(args):
     """
     dataset = args.dataset
     data_dir = args.data_dir
-    num_way = args.num_way
+    num_way = args.num_ways
     num_shots = args.num_shots
     num_shots_test = args.num_shots_test
     text_encoder = args.text_encoder
