@@ -9,6 +9,7 @@ from transformers import BertModel
 
 import utils
 
+
 class AM3(nn.Module):
     def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False):
         super(AM3, self).__init__()
@@ -22,7 +23,7 @@ class AM3(nn.Module):
 
         if im_encoder == "precomputed":
             # if using precomputed embeddings (or identity)
-            self.image_encoder = nn.Linear(im_emb_dim, prototype_dim)
+            self.image_encoder = nn.Identity()
         elif im_encoder == "resnet":
             # TODO image encoder if raw images
             self.image_encoder = nn.Linear(im_emb_dim, prototype_dim)
@@ -91,7 +92,7 @@ class AM3(nn.Module):
         Params:
         - batch (dict): meta-batch of tasks
         - optimizer (nn.optim): 
-        - num_ways (int):
+        - num_ways (int): number 'N' of classes to choose from.
         - device (torch.device): cuda or cpu
         - task (str): train, val, test
         Returns:
@@ -201,3 +202,9 @@ def get_num_samples(targets, num_classes, dtype=None):
         num_samples = ones.new_zeros((batch_size, num_classes))
         num_samples.scatter_add_(1, targets, ones)
     return num_samples
+
+
+if __name__ == "__main__":
+
+    model = AM3(im_encoder="precomputed", im_emb_dim=512, text_encoder="BERT", text_emb_dim=768, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False)
+    print(model)
