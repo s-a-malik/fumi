@@ -14,18 +14,27 @@ Datasets:
 
 ## Usage
 
-Hyperparameters are set with argparse flags. Use `--evaluate` flag for testing a trained model on the test set.
+Hyperparameters are set with argparse flags. Use `--evaluate` flag for testing a trained model on the test set. See colab notebook on the Google Drive for how the experiments were run. All logs/checkpoints are saved to wandb.
 
 Example:
+
 ```bash
 python main.py --arg1 {arg1} --arg2 {arg2}
 ```
 
+## Experiments to try
+
+- [ ] AM3 baseline - GloVE class label embeddings. (they use resnet like us as well)
+- [ ] BERT class label embeddings
+- [ ] BERT class description embeddings
+- [ ] Plots of lamdba with different number of shots/ways
+
 ## TODO
 
 - [ ] Implement the model and test end-to-end
+- [ ] Logs and model saving on wandb.
+- [ ] further metrics e.g. f1, prec, rec, lamda etc.
 - [ ] add training stuff to improve performance (lr decay, augmentation etc.). 
-- [ ] Reproduce results on their datasets
-- [ ] Use pretrained resnet embeddings straight from dataset
+- [ ] Reproduce results on their datasets - need to get class labels from CUB etc. 
 - [ ] Use model on our datasets
-- [ ] Extend to use BERT embeddings and class descriptions instead of class labels
+- [ ] Run experiments
