@@ -14,7 +14,7 @@ class AM3(nn.Module):
     def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False):
         super(AM3, self).__init__()
         self.im_emb_dim = im_emb_dim
-        self.text_encoder = text_encoder
+        self.text_encoder_type = text_encoder
         self.text_emb_dim = text_emb_dim
         self.text_hid_dim = text_hid_dim        # AM3 uses 300
         self.prototype_dim = prototype_dim      # AM3 uses 512 (resnet)
@@ -33,7 +33,7 @@ class AM3(nn.Module):
             self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
             self.text_emb_dim = self.text_encoder.config.hidden_size
             if not fine_tune:
-                for param in text_encoder.parameters():
+                for param in self.text_encoder.parameters():
                     param.requires_grad = False
         # TODO other embeddings
         elif text_encoder == "GloVe":
@@ -63,6 +63,9 @@ class AM3(nn.Module):
         Params:
         -------
         - inputs (tuple): 
+            - idx:  image ids
+            - text: padded tokenised sequence. (tuple for BERT of input_ids and attn_mask - TODO). 
+            - im:   precomputed image embeddings
         - im_only (bool): flag to only use image input (for query set)
 
         Returns:
@@ -70,15 +73,16 @@ class AM3(nn.Module):
         - im_embeddings (torch.FloatTensor): image in prototype space (batch, NxK, hid_dim)
         - (if not im_only) text_embeddings (torch.FloatTensor): text in prototype space (batch, NxK, hid_dim)
         """
-        
         idx, text, im = inputs
         im_embeddings = self.image_encoder(im)      # (b x N*K x 512)
         if not im_only:
             # text input is same shape as images
-            if self.text_encoder == "BERT":
-                bert_output = self.text_encoder(**text)
+            if self.text_encoder_type == "BERT":
+                B, NK, seq_len = text.shape
+                # bert_output = self.text_encoder(**text)   # if text is with attn mask
+                bert_output = self.text_encoder(text.view(-1, seq_len))
                 # get [CLS] token
-                text_encoding = bert_output[1]        # (b x N*K x 768)
+                text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
             else:
                 text_encoding = self.text_encoder(text)
             text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
@@ -113,7 +117,7 @@ class AM3(nn.Module):
         # query set
         test_inputs, test_targets = batch['test']
         # need to also get image idx from this
-        test_inputs = test_inputs.to(device=device) # this might not work with input tuples.
+        test_inputs = test_inputs.to(device=device)             # this might not work with input tuples.
         test_targets = test_targets.to(device=device)
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
@@ -192,6 +196,7 @@ class AM3(nn.Module):
         prototypes = lamdas_per_class * im_prototypes + (1-lamdas_per_class) * text_prototypes
         return prototypes
 
+
 def get_num_samples(targets, num_classes, dtype=None):
     """Returns a vector with the number of samples in each class.
     - num_samples (torch.LongTensor): (b x N)
@@ -208,3 +213,12 @@ if __name__ == "__main__":
 
     model = AM3(im_encoder="precomputed", im_emb_dim=512, text_encoder="BERT", text_emb_dim=768, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False)
     print(model)
+    N = 5
+    K = 2
+    B = 16
+    idx = torch.ones(B, N*K)
+    text = torch.ones(B, N*K, 512, dtype=torch.int64)
+    im = torch.ones(B, N*K, 128)   
+    inputs = (idx, text, im)
+    output = model(inputs)
+    print(output)

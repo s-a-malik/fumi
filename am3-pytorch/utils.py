@@ -102,7 +102,7 @@ def load_checkpoint(model, optimizer, device, checkpoint_file: str):
     """
     checkpoint = torch.load(checkpoint_file, map_location=device)
     model.load_state_dict(checkpoint["state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer])
+    optimizer.load_state_dict(checkpoint["optimizer"])
     print(f"Loaded {checkpoint_file}, "
           f"trained to epoch {checkpoint['batch_idx']} with best loss {checkpoint['best_loss']}")
 

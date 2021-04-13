@@ -63,7 +63,7 @@ def main(args):
         try:
             # Training loop
             # do in epochs with a max_num_batches instead?
-            with tqdm(train_dataloader, total=args.epochs) as pbar:
+            with tqdm(train_loader, total=args.epochs) as pbar:
                 for batch_idx, batch in enumerate(pbar):
                     # TODO make this into an evaluate function
                     train_loss, train_acc = model.evaluate(
@@ -82,7 +82,7 @@ def main(args):
                     if batch_idx % 100 == 0:
                         # evaluate on val set
                         val_loss, val_acc, _, _, _, _ = test_loop(model, 
-                                val_dataloader, max_test_batches)
+                                val_loader, max_test_batches)
                         is_best = val_loss < best_loss
                         if is_best:
                             best_loss = val_loss
@@ -115,13 +115,14 @@ def main(args):
     
     # test
     test_loss, test_acc, test_preds, test_true, test_idx, task_idx = test_loop(
-        model, test_dataloader, max_test_batches)
+        model, test_loader, max_test_batches)
     print(f"test loss: {test_loss}, test acc: {test_acc}")
     
     # TODO more metrics - F1, precision, recall etc.
 
     # save results
-    wandb.log({"test/acc": test_acc,
+    wandb.log({
+        "test/acc": test_acc,
         "test/loss": test_loss}, step=batch_idx)
     df = pd.DataFrame({
         "image_idx": test_idx,
@@ -203,7 +204,7 @@ def test_loop(model, test_dataloader, max_num_batches):
             test_preds += preds.tolist()
             test_trues += trues.tolist()
             test_idx += idx.tolist()
-            task_idx.append(batch_idx)
+            task_idx.append(batch_idx)   # TODO fix to get tasks not batches
                     
     return avg_test_loss, avg_test_acc, test_preds, test_trues, test_idx, task_idx
 
