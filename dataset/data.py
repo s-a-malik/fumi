@@ -15,6 +15,7 @@ from enum import Enum
 import nltk
 from nltk.corpus import stopwords
 from transformers import BertTokenizer
+import random
 from gensim.utils import tokenize
 from gensim import corpora
 
@@ -40,6 +41,9 @@ class Zanim(CombinationMetaDataset):
         :param root: the path to the root directory of the dataset
         :param json_path: the path to the json file containing the annotations
         """
+        random.seed(0)
+        np.random.seed(0)
+        torch.manual_seed(0)
         dataset = ZanimClassDataset(root, json_path, meta_train=meta_train, meta_val=meta_val, meta_test=meta_test, tokenisation_mode=tokenisation_mode, full_description=full_description, remove_stop_words=remove_stop_words)
         super().__init__(dataset, num_classes_per_task)
 
