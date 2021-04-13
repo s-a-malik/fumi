@@ -13,6 +13,7 @@ import torch
 from torchmeta.utils.data import BatchMetaDataLoader
 
 from model import AM3
+from data import get_dataset
 import utils
 
 
@@ -86,7 +87,7 @@ def main(args):
                         if is_best:
                             best_loss = val_loss
                             best_batch_idx = batch_idx
-
+                        # TODO could log examples
                         wandb.log({"val/acc": val_acc,
                                    "val/loss": val_loss}, step=batch_idx)
 
@@ -135,6 +136,7 @@ def main(args):
 def init_model(args):
     """Initialise model
     """
+    # could do a better way
     model_args = [
         args.im_encoder,
         args.im_emb_dim,
@@ -142,7 +144,8 @@ def init_model(args):
         args.text_emb_dim,
         args.prototype_dim,
         args.text_hid_dim,
-        args.dropout
+        args.dropout,
+        args.fine_tune
     ]
     model = AM3(*model_args)
     wandb.watch(model, log="all")   # for tracking gradients etc.
@@ -214,7 +217,7 @@ def parse_args():
     # data config
     parser.add_argument("--dataset",
                         type=str,
-                        default="iNat",
+                        default="zanim",
                         help="Dataset to use")
     parser.add_argument("--data_dir",
                         type=str,
@@ -227,7 +230,11 @@ def parse_args():
     parser.add_argument("--log_dir",
                         type=str,
                         default="./am3",
-                        help="Directory to use for logs and checkpoints")               
+                        help="Directory to use for logs and checkpoints")      
+    parser.add_argument('--remove_stop_words',
+                        action='store_true',
+                        help="whether to remove stop words")
+      
 
     # optimizer config
     parser.add_argument("--epochs",
@@ -297,6 +304,9 @@ def parse_args():
                         type=str,
                         default="glove",
                         help="Type of text embedding (glove, BERT)")
+    parser.add_argument("--fine_tune",
+                        action="store_true"
+                        help="whether to fine tune text encoder")
     parser.add_argument("--text_type",
                         type=str,
                         default="label",

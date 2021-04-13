@@ -9,7 +9,7 @@ import utils
 
 
 class AM3(nn.Module):
-    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, prototype_dim=512, text_hid_dim=300, dropout=0.7):
+    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune):
         super(AM3, self).__init__()
         self.im_emb_dim = im_emb_dim
         self.text_emb_dim = text_emb_dim
@@ -25,11 +25,11 @@ class AM3(nn.Module):
             self.image_encoder = nn.Linear(im_emb_dim, prototype_dim)
 
         # TODO fixed word embeddings or BERT. Use a submodule that returns just the final embedding.
-        if text_encoder == "bert":
+        if text_encoder == "BERT":
             self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
-        elif text_encoder == "glove":
+        elif text_encoder == "GloVe":
             self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
-        elif text_encoder == "rnn":
+        elif text_encoder == "RNN":
             self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
 
         # text to prototype neural net

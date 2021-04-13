@@ -15,6 +15,7 @@ from torchvision import transforms
 from torchmeta.utils.data import Dataset, ClassDataset, CombinationMetaDataset
 import torchmeta.datasets.helpers as datasets
 from torchmeta.utils.data import BatchMetaDataLoader
+from torchmeta.transforms import ClassSplitter
 
 from transformers import BertTokenizer
 
@@ -22,6 +23,7 @@ import nltk
 from nltk.corpus import stopwords
 from gensim.utils import tokenize
 from gensim import corpora
+
 
 def get_dataset(args):
     """Return the appropriate dataset, with preprocessing transforms
@@ -33,30 +35,32 @@ def get_dataset(args):
     num_shots_test = args.num_shots_test
     text_encoder = args.text_encoder
     text_type = args.text_type
+    remove_stop_words = args.remove_stop_words
 
-    if dataset == "CUB":
-        train, val, test = get_CUB(data_dir, num_way, num_shots, num_shots_test)
-    elif dataset == "iNat":
-        train, val, test = get_inat(data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type)
+    if dataset == "cub":
+        train, val, test, dictionary = get_CUB(data_dir, num_way, num_shots, num_shots_test)
+    elif dataset == "zanim":
+        train, val, test, dictionary = get_zanim(data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
     else:
         raise NotImplementedError()
     
     train_loader = BatchMetaDataLoader(train,
-                                        batch_size=args.batch_size,
-                                        shuffle=True,
-                                        num_workers=args.num_workers)
+                                       batch_size=args.batch_size,
+                                       shuffle=True,
+                                       num_workers=args.num_workers)
     val_loader = BatchMetaDataLoader(val,
-                                        batch_size=args.batch_size,
-                                        shuffle=True,
-                                        num_workers=args.num_workers)
+                                     batch_size=args.batch_size,
+                                     shuffle=True,
+                                     num_workers=args.num_workers)
     test_loader = BatchMetaDataLoader(test,
-                                        batch_size=args.batch_size,
-                                        shuffle=False,
-                                        num_workers=args.num_workers)
+                                      batch_size=args.batch_size,
+                                      shuffle=False,
+                                      num_workers=args.num_workers)
 
-    return train_loader, val_loader, test_loader
+    return train_loader, val_loader, test_loader, dictionary
 
-def get_inat(data_dir: str, num_way: int, num_shots: int, num_shots_test: int, text_encoder, text_type):
+
+def get_zanim(data_dir: str, num_way: int, num_shots: int, num_shots_test: int, text_encoder: str, text_type: str, remove_stop_words: bool):
     """loads up our data
     """
     if text_encoder == "BERT":
@@ -64,23 +68,34 @@ def get_inat(data_dir: str, num_way: int, num_shots: int, num_shots_test: int, t
     else:
         token_mode = TokenisationMode.STANDARD
 
-    train = Zanim(root=data_dir, num_classes_per_task=num_way, meta_train=True, tokenisation_mode=token_mode)
-    train = ClassSplitter(train, shuffle=True, num_test_per_class=num_shots_test, num_train_per_class=num_shots)
-    train.seed(0)
+    if text_type == "description":
+        full_description = True
+    elif text_type == "label":
+        full_description = False
+    else:
+        NameError(f"text type {text_type} not allowed")
 
-    val = Zanim(root=data_dir, num_classes_per_task=num_way, meta_train=True, tokenisation_mode=token_mode)
-    val = ClassSplitter(val, shuffle=True, num_test_per_class=num_shots_test, num_train_per_class=num_shots)
-    val.seed(0) 
+    train = Zanim(root=data_dir, num_classes_per_task=num_way, meta_train=True, tokenisation_mode=token_mode, full_description=full_description, remove_stop_words=remove_stop_words)
+    train_split = ClassSplitter(train, shuffle=True, num_test_per_class=num_shots_test, num_train_per_class=num_shots)
+    train_split.seed(0)
 
-    test = Zanim(root=data_dir, num_classes_per_task=num_way, meta_train=True, tokenisation_mode=token_mode)
-    test = ClassSplitter(test, shuffle=True, num_test_per_class=num_shots_test, num_train_per_class=num_shots)
-    test.seed(0)
+    val = Zanim(root=data_dir, num_classes_per_task=num_way, meta_val=True, tokenisation_mode=token_mode, full_description=full_description, remove_stop_words=remove_stop_words)
+    val_split = ClassSplitter(val, shuffle=True, num_test_per_class=int(100/num_shots), num_train_per_class=num_shots)
+    val_split.seed(0) 
 
-    return train, val, test
+    test = Zanim(root=data_dir, num_classes_per_task=num_way, meta_test=True, tokenisation_mode=token_mode, full_description=full_description, remove_stop_words=remove_stop_words)
+    test_split = ClassSplitter(test, shuffle=True, num_test_per_class=int(100/num_shots), num_train_per_class=num_shots)
+    test_split.seed(0)
+
+    # all the same dictionary anyway
+    dictionary = train.dictionary
+
+    return train_split, val_split, test_split, dictionary
 
 
 def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
-    # add transforms 
+    """Need to fix to get text as well
+    """
     train = datasets.cub(data_dir, ways=num_way, shots=num_shots, test_shots=num_shots_test,
                         meta_split="train", download=True)
 
@@ -90,7 +105,9 @@ def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
     test = datasets.CUB(data_dir, ways=num_way, shots=num_shots, test_shots=int(100/num_shots), meta_split="test",
                         download=True)
     
-    return train, val, test
+    dictionary = None
+
+    return train, val, test, dictionary
 
 
 class DefaultTransform(Compose):
@@ -111,7 +128,7 @@ class TokenisationMode(Enum):
 
 class Zanim(CombinationMetaDataset):
 
-    def __init__(self, root, json_path="train.json", num_classes_per_task=None, meta_train=False, meta_val=False, meta_test=False, tokenisation_mode: TokenisationMode = TokenisationMode.BERT, full_description=True, remove_stop_words=False):
+    def __init__(self, root, json_path="train.json", num_classes_per_task=None, meta_train=False, meta_val=False, meta_test=False, tokenisation_mode: TokenisationMode = TokenisationMode.BERT, full_description=True, remove_stop_words=True):
         """
         :param root: the path to the root directory of the dataset
         :param json_path: the path to the json file containing the annotations
@@ -122,11 +139,15 @@ class Zanim(CombinationMetaDataset):
         dataset = ZanimClassDataset(root, json_path, meta_train=meta_train, meta_val=meta_val, meta_test=meta_test,
                                     tokenisation_mode=tokenisation_mode, full_description=full_description, remove_stop_words=remove_stop_words)
         super().__init__(dataset, num_classes_per_task)
+        super().__init__(self.dataset, num_classes_per_task)
 
+    @property
+    def dictionary(self):
+        return self.dataset.dictionary.token2id
 
 class ZanimClassDataset(ClassDataset):
 
-    def __init__(self, root: str, json_path: str, meta_train=False, meta_val=False, meta_test=False, tokenisation_mode=TokenisationMode.BERT, full_description=True, remove_stop_words=False):
+    def __init__(self, root: str, json_path: str, meta_train=False, meta_val=False, meta_test=False, tokenisation_mode=TokenisationMode.BERT, full_description=True, remove_stop_words=True):
         super().__init__(meta_train=meta_train, meta_val=meta_val, meta_test=meta_test)
         if not(root in json_path):
             json_path = os.path.join(root, json_path)
@@ -193,8 +214,9 @@ class ZanimClassDataset(ClassDataset):
             max_length = max(lengths)
             self.descriptions = [d.lower() + " " + " ".join(["<PAD>" for _ in range(
                 max_length-lengths[i])]) for (i, d) in enumerate(self.descriptions)]
-            self.dictionary = corpora.Dictionary(
-                [tokenize(d) for d in self.descriptions])
+            full_set_of_descriptions = [annotations['categories'][i]['description' if full_description else 'name'] for i in range(N)]
+            self.dictionary = corpora.Dictionary([tokenize(d.lower()) for d in full_set_of_descriptions])
+            self.dictionary.add_documents([tokenize("<PAD>")])
             self.descriptions = [[self.dictionary.token2id[z]
                 for z in tokenize(d)] for d in self.descriptions]
 
