@@ -22,7 +22,7 @@ class AM3(nn.Module):
         self.fine_tune = fine_tune
 
         if im_encoder == "precomputed":
-            # if using precomputed embeddings (or identity)
+            # if using precomputed embeddings
             self.image_encoder = nn.Identity()
         elif im_encoder == "resnet":
             # TODO image encoder if raw images

@@ -204,7 +204,8 @@ def test_loop(model, test_dataloader, max_num_batches):
             test_preds += preds.tolist()
             test_trues += trues.tolist()
             test_idx += idx.tolist()
-            task_idx.append(batch_idx)   # TODO fix to get tasks not batches
+            # TODO fix to get tasks not batches
+            task_idx.append(batch_idx)
                     
     return avg_test_loss, avg_test_acc, test_preds, test_trues, test_idx, task_idx
 
