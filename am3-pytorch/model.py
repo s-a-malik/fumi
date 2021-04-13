@@ -137,7 +137,8 @@ class AM3(nn.Module):
         if task == "test":
             # TODO return the query/support images and text per task and lamdas to compare 
             # returning just the query set targets is not that helpful.
-            return loss, acc, preds, test_targets.detach().cpu().numpy(), test_inputs.detach().cpu().numpy()
+            test_idx = test_inputs[0]
+            return loss, acc, preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy()
         else:
             return loss, acc
         

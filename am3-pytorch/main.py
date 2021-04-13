@@ -67,10 +67,10 @@ def main(args):
                 for batch_idx, batch in enumerate(pbar):
                     # TODO make this into an evaluate function
                     train_loss, train_acc = model.evaluate(
-                        batch,
-                        optimizer,
-                        args.num_ways,
-                        args.device,
+                        batch=batch,
+                        optimizer=optimizer,
+                        num_ways=args.num_ways,
+                        device=args.device,
                         task="train")
 
                     # log
@@ -125,7 +125,7 @@ def main(args):
         "test/loss": test_loss}, step=batch_idx)
     df = pd.DataFrame({
         "image_idx": test_idx,
-        "task_idx": task_idx
+        "task_idx": task_idx,
         "preds": test_preds,
         "targets": test_true})
     df.to_csv(path_or_buf=f"{results_path}/run_{wandb.run.name}")
@@ -192,10 +192,10 @@ def test_loop(model, test_dataloader, max_num_batches):
     with tqdm(test_dataloader, total=max_num_batches) as pbar:
         for batch_idx, batch in enumerate(pbar):
             test_loss, test_acc, preds, trues, idx = model.evaluate(
-                batch,
+                batch=batch,
                 optimizer=None,
-                args.num_ways,
-                args.device,
+                num_ways=args.num_ways,
+                device=args.device,
                 task="test")
 
             avg_test_acc.update(test_acc)
@@ -280,7 +280,7 @@ def parse_args():
                         default=5,
                         help="Number of classes per task in query set")
     parser.add_argument("--augment",
-                        action="store_true"
+                        action="store_true",
                         help="augment data with image transformations")
     parser.add_argument("--num_workers",
                         type=int,
@@ -305,7 +305,7 @@ def parse_args():
                         default="glove",
                         help="Type of text embedding (glove, BERT)")
     parser.add_argument("--fine_tune",
-                        action="store_true"
+                        action="store_true",
                         help="whether to fine tune text encoder")
     parser.add_argument("--text_type",
                         type=str,
@@ -338,7 +338,7 @@ def parse_args():
                         default="debug",
                         help="Name for experiment (for wandb group)")
     parser.add_argument("--evaluate",
-                        action="store_true"
+                        action="store_true",
                         help="skip training")
     parser.add_argument("--num_ep_test",
                         type=int,
