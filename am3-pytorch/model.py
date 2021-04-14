@@ -76,6 +76,7 @@ class AM3(nn.Module):
         # unpack input
         if self.text_encoder_type == "BERT":
             idx, text, attn_mask, im = inputs
+            print(idx.shape, text.shape, attn_mask.shape, im.shape)
         else:
             idx, text, im = inputs
         
@@ -126,6 +127,7 @@ class AM3(nn.Module):
         test_targets = test_targets.to(device)
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
+        print(train_im_embeddings.shape, train_text_embeddings.shape, train_lamda.shape, train_targets.shape, test_im_embeddings.shape, test_targets.shape)
         # need to change the targets to in range 0-num_ways
         prototypes = self.get_prototypes(
             train_im_embeddings,
@@ -186,6 +188,8 @@ class AM3(nn.Module):
         num_samples.unsqueeze_(-1)  # (b x N x 1)
         num_samples = torch.max(num_samples, torch.ones_like(num_samples))      # prevents zero division error
         indices = targets.unsqueeze(-1).expand_as(im_embeddings)                # (b x N*K x 512)
+
+        print(indices.shape)
 
         im_prototypes = im_embeddings.new_zeros((batch_size, num_classes, embedding_size))
         im_prototypes.scatter_add_(1, indices, im_embeddings).div_(num_samples)   # compute mean embedding of each class
