@@ -103,7 +103,7 @@ def main(args):
                     utils.save_checkpoint(checkpoint_dict, is_best)
                     # TODO save example outputs?
 
-                    print(f"Batch: {batch_idx+1} \ntrain/loss: {train_loss}, train/acc: {train_acc}"
+                    print(f"Batch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
                             f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
                 # break after max iters or early stopping
