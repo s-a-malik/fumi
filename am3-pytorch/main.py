@@ -24,7 +24,7 @@ def main(args):
     # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
 
     # set up directories and logs
-    model_path = f"./checkpoints"       # models are saved to wandb run, this is local storage for restoring
+    model_path = "./checkpoints"       # models are saved to wandb run, this is local storage for restoring
     results_path = f"{args.log_dir}/results"
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)

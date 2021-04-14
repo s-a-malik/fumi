@@ -94,7 +94,6 @@ class AM3(nn.Module):
         else:
             return im_embeddings
 
-
     def evaluate(self, batch, optimizer, num_ways, device, task="train"):
         """Run one episode through model
         Params:
@@ -114,9 +113,9 @@ class AM3(nn.Module):
             self.eval()
 
         # support set
-        train_inputs, train_targets = batch['train']            # (b x N*K x 512) for images
+        train_inputs, train_targets = batch['train']            
         train_inputs = [x.to(device) for x in train_inputs]
-        train_targets = train_targets.to(device)                           # these are category IDs (global)
+        train_targets = train_targets.to(device)                          
         train_im_embeddings, train_text_embeddings, train_lamda = self(train_inputs)
         avg_lamda = torch.mean(train_lamda)
 

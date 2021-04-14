@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 import wandb
 
+
 def get_preds(prototypes, embeddings, targets):
     """Compute the accuracy of the prototypical network on the test/query points.
     Params:
@@ -52,7 +53,7 @@ class AverageMeter(object):
         self.avg = 0
         self.sum = 0
         self.count = 0
-    
+
     def update(self, val, n=1):
         self.val = val
         self.sum += val * n
@@ -70,7 +71,7 @@ def save_checkpoint(checkpoint_dict: dict, is_best: bool):
     checkpoint_file = os.path.join(wandb.run.dir, "ckpt.pth.tar")
     best_file = os.path.join(wandb.run.dir, "best.pth.tar")
     torch.save(checkpoint_dict, checkpoint_file)
-    
+
     if is_best:
         shutil.copyfile(checkpoint_file, best_file)
 
