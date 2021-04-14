@@ -6,7 +6,7 @@ from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
 
-def PureImageNetwork(MetaModule):
+class PureImageNetwork(MetaModule):
     def __init__(self, im_embed_dim=512, n_way=5, hidden=64):
         super(PureImageNetwork, self).__init__()
         self.im_embed_dim = im_embed_dim
