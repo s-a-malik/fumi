@@ -116,15 +116,17 @@ class AM3(nn.Module):
 
         # support set
         train_inputs, train_targets = batch['train']            # (b x N*K x 512) for images
-        train_inputs = train_inputs.to(device=device)
-        train_targets = train_targets.to(device=device)
+        train_inputs = [x.to(device) for x in train_inputs]
+        train_targets = train_targets
+        print(train_inputs, "train inputs")
+        print(train_targets, "train targets")
         train_im_embeddings, train_text_embeddings, train_lamda = self(train_inputs)
 
         # query set
         test_inputs, test_targets = batch['test']
         # need to also get image idx from this
-        test_inputs = test_inputs.to(device=device)             # this might not work with input tuples.
-        test_targets = test_targets.to(device=device)
+        test_inputs = [x.to(device) for x in test_inputs]
+        test_targets = test_targets
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
         prototypes = self.get_prototypes(

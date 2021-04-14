@@ -28,6 +28,7 @@ python main.py --arg1 {arg1} --arg2 {arg2}
 - [ ] BERT class label embeddings
 - [ ] BERT class description embeddings
 - [ ] Plots of lamdba with different number of shots/ways
+- [ ] No text (just image prototype, lamda = 1)
 - [ ] vary N, K etc.
 
 ## TODO
