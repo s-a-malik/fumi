@@ -57,7 +57,7 @@ def main(args):
     if not args.evaluate:
         # get best val loss
         best_loss, best_acc, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
-        print(f"initial loss: {best_loss}, acc: {best_acc}")
+        print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
         best_batch_idx = 0
         
         # use try, except to be able to stop partway through training
@@ -80,10 +80,9 @@ def main(args):
                             "train/loss": train_loss}, step=batch_idx)
 
                 # eval on validation set periodically
-                if batch_idx % 100 == 0:
+                if batch_idx % 10 == 0:
                     # evaluate on val set
-                    val_loss, val_acc, _, _, _, _ = test_loop(
-                        model, val_loader, max_test_batches)
+                    val_loss, val_acc, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
                     is_best = val_loss < best_loss
                     if is_best:
                         best_loss = val_loss
@@ -103,7 +102,7 @@ def main(args):
                     utils.save_checkpoint(checkpoint_dict, is_best)
                     # TODO save example outputs?
 
-                    print(f"Batch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
+                    print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
                             f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
                 # break after max iters or early stopping
@@ -203,7 +202,7 @@ def test_loop(model, test_dataloader, max_num_batches):
         test_trues += trues.tolist()
         test_idx += idx.tolist()
         # TODO fix to get tasks not batches
-        task_idx.append([batch_idx for i in range(len(idx))])
+        task_idx += [batch_idx for i in range(len(idx))]
 
         if batch_idx > max_num_batches - 1:
             break
