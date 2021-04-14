@@ -25,9 +25,9 @@ def main(args):
     # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
 
     # set up directories and logs
-    # model_path = f"{args.log_dir}/models" # saved to wandb run
+    model_path = f"{args.log_dir}/models"       # models are saved to wandb run, this is local storage for restoring
     results_path = f"{args.log_dir}/results"   
-    # os.makedirs(model_path, exist_ok=True)
+    os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
     run = wandb.init(entity="multimodal-image-cls", 
                      project="am3",
@@ -81,8 +81,8 @@ def main(args):
                     # eval on validation set periodically
                     if batch_idx % 100 == 0:
                         # evaluate on val set
-                        val_loss, val_acc, _, _, _, _ = test_loop(model, 
-                                val_loader, max_test_batches)
+                        val_loss, val_acc, _, _, _, _ = test_loop(
+                            model, val_loader, max_test_batches)
                         is_best = val_loss < best_loss
                         if is_best:
                             best_loss = val_loss
@@ -206,7 +206,7 @@ def test_loop(model, test_dataloader, max_num_batches):
             test_trues += trues.tolist()
             test_idx += idx.tolist()
             # TODO fix to get tasks not batches
-            task_idx.append(batch_idx)
+            task_idx.append([batch_idx for i in range(len(idx))])
                     
     return avg_test_loss, avg_test_acc, test_preds, test_trues, test_idx, task_idx
 
