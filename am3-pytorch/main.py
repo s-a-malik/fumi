@@ -76,12 +76,14 @@ def main(args):
 
                 # log
                 # pbar.set_postfix(accuracy='{0:.4f}'.format(train_acc.item()))
+                # TODO track lr etc as well
                 wandb.log({"train/acc": train_acc,
-                            "train/loss": train_loss,
-                            "train/avg_lamda": train_lamda}, step=batch_idx)
+                           "train/loss": train_loss,
+                           "train/avg_lamda": train_lamda,
+                           "num_episodes": (batch_idx+1)*len(batch["train"][0][0])}, step=batch_idx)
 
                 # eval on validation set periodically
-                if batch_idx % 10 == 0:
+                if batch_idx % args.eval_freq == 0:
                     # evaluate on val set
                     val_loss, val_acc, _, _, _, _, val_lamda = test_loop(model, val_loader, max_test_batches)
                     is_best = val_loss < best_loss
@@ -91,7 +93,7 @@ def main(args):
                     # TODO could log examples
                     wandb.log({"val/acc": val_acc,
                                 "val/loss": val_loss,
-                                "val/avg_lamda": avg_lamda}, step=batch_idx)
+                                "val/avg_lamda": val_lamda}, step=batch_idx)
 
                     # save checkpoint
                     checkpoint_dict = {
@@ -105,7 +107,7 @@ def main(args):
                     # TODO save example outputs?
 
                     print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
-                            f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {avg_lamda}")
+                          f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {val_lamda}")
 
                 # break after max iters or early stopping
                 if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
@@ -336,6 +338,10 @@ def parse_args():
                         type=int,
                         default=100,
                         help="Early stopping patience")   
+    parser.add_argument("--eval_freq",
+                        type=int,
+                        default=20,
+                        help="Number of batches between validation/checkpointing")  
     parser.add_argument("--experiment",
                         type=str,
                         default="debug",
