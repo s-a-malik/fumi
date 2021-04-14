@@ -10,7 +10,7 @@ import utils
 
 
 class AM3(nn.Module):
-    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False):
+    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False, dictionary=None):
         super(AM3, self).__init__()
         self.im_emb_dim = im_emb_dim
         self.text_encoder_type = text_encoder
@@ -19,6 +19,7 @@ class AM3(nn.Module):
         self.prototype_dim = prototype_dim      # AM3 uses 512 (resnet)
         self.dropout = dropout                  # AM3 uses 0.7 or 0.9 depending on dataset
         self.fine_tune = fine_tune
+        self.dictionary = dictionary            # for word embeddings
 
         if im_encoder == "precomputed":
             # if using precomputed embeddings
@@ -34,10 +35,9 @@ class AM3(nn.Module):
             if not fine_tune:
                 for param in self.text_encoder.parameters():
                     param.requires_grad = False
-        # TODO other embeddings
+        # TODO other embeddings, use dictionary to get embeddings loaded
         elif text_encoder == "GloVe":
             self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
-
         elif text_encoder == "RNN":
             self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
 
