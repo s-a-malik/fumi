@@ -277,10 +277,6 @@ def parse_args():
                         type=int,
                         default=32,
                         help="Number of examples per class in query set")
-    parser.add_argument("--num_ways_test",
-                        type=int,
-                        default=5,
-                        help="Number of classes per task in query set")
     parser.add_argument("--augment",
                         action="store_true",
                         help="augment data with image transformations")
