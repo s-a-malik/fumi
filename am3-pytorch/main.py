@@ -64,7 +64,8 @@ def main(args):
         try:
             # Training loop
             # do in epochs with a max_num_batches instead?
-            for batch_idx, batch in enumerate(tqdm(train_loader, total=args.epochs)):
+            # for batch_idx, batch in enumerate(tqdm(train_loader, total=args.epochs)):
+            for batch_idx, batch in enumerate(train_loader, total=args.epochs):
                 # TODO make this into an evaluate function
                 train_loss, train_acc = model.evaluate(
                     batch=batch,
@@ -79,7 +80,7 @@ def main(args):
                             "train/loss": train_loss}, step=batch_idx)
 
                 # eval on validation set periodically
-                if batch_idx % 10 == 0:
+                if batch_idx % 100 == 0:
                     # evaluate on val set
                     val_loss, val_acc, _, _, _, _ = test_loop(
                         model, val_loader, max_test_batches)
@@ -99,15 +100,10 @@ def main(args):
                         "optimizer": optimizer.state_dict(),
                         "args": vars(args)
                     }
-                    utils.save_checkpoint(
-                        checkpoint_dict,
-                        is_best,
-                        checkpoint_file=os.path.join(wandb.run.dir, "ckpt.pth.tar"),
-                        best_file=os.path.join(wandb.run.dir, "best.pth.tar")
-                    )
+                    utils.save_checkpoint(checkpoint_dict, is_best)
                     # TODO save example outputs?
 
-                    print(f"Batch: {batch_idx+1}\ntrain/loss: {train_loss}, train/acc: {train_acc}"
+                    print(f"Batch: {batch_idx+1} \ntrain/loss: {train_loss}, train/acc: {train_acc}"
                             f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
                 # break after max iters or early stopping
@@ -193,7 +189,7 @@ def test_loop(model, test_dataloader, max_num_batches):
     test_idx = []
     task_idx = []
     
-    for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches)):
+    for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches)): 
         test_loss, test_acc, preds, trues, idx = model.evaluate(
             batch=batch,
             optimizer=None,
