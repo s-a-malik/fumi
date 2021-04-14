@@ -28,10 +28,12 @@ def main(args):
     results_path = f"{args.log_dir}/results"
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
-    os.environ['WANDB_DISABLE_CODE'] = "true"         # disable code logging
+    job_type = "eval" if args.evaluate else "train"
     run = wandb.init(entity="multimodal-image-cls", 
                      project="am3",
-                     group=args.experiment)
+                     group=args.experiment,
+                     job_type=job_type,
+                     save_code=False)
     wandb.config.update(args)
 
     # load datasets
