@@ -278,3 +278,43 @@ class ZanimDataset(Dataset):
         else:
             return (self.image_ids[index], torch.tensor(self.description), torch.tensor(self.attention_mask), self.data[index]), target
 
+
+if __name__ == "__main__":
+    text_type = "label"
+    text_encoder = "BERT"
+    num_way = 3
+    num_shots = 5
+    num_shots_test = 32
+    batch_size = 5
+    remove_stop_words = False
+    data_dir = "/content/drive/My Drive/MSc ML/NLP/NLP project/Dataset"
+    train, val, test, dictionary = get_zanim(data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
+    print("dictionary", len(dictionary), dictionary)
+    train_loader = BatchMetaDataLoader(train, batch_size=batch_size, shuffle=True, num_workers=0)
+
+    # check first couple batches
+    for batch_idx, batch in enumerate(train_loader):
+        train_inputs, train_targets = batch['train']    
+        print("train targets")       
+        print(train_targets.shape, train_targets)
+        test_inputs, test_targets = batch['test']
+        if text_encoder == "BERT":
+            idx, text, attn_mask, im = train_inputs
+            print("idx")
+            print(idx.shape, idx)
+            print("text")
+            print(text.shape, text)
+            print("attn_mask")
+            print(attn_mask.shape, attn_mask)
+            print("im")
+            print(im.shape, im)
+        else:
+            idx, text, im = train_inputs
+            print("idx")
+            print(idx.shape, idx)
+            print("text")
+            print(text.shape, text)
+            print("im")
+            print(im.shape, im)
+        if batch_idx > 1:
+            break
