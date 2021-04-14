@@ -305,11 +305,11 @@ def parse_args():
                         help="Type of vision feature extractor (resnet, precomputed)")
     parser.add_argument("--im_emb_dim",
                         type=int,
-                        default=512,
+                        default=2048,
                         help="Dimension of image embedding (if precomputed)")
     parser.add_argument("--text_encoder",
                         type=str,
-                        default="glove",
+                        default="BERT",
                         help="Type of text embedding (glove, BERT)")
     parser.add_argument("--fine_tune",
                         action="store_true",

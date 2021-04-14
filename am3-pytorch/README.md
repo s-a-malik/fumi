@@ -19,7 +19,10 @@ Hyperparameters are set with argparse flags. Use `--evaluate` flag for testing a
 Example:
 
 ```bash
-python main.py --arg1 {arg1} --arg2 {arg2}
+python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
+    --experiment debug --num_shots 5 --num_ways 3 --num_shots_test 32 \
+    --im_encoder precomputed --text_encoder BERT --text_type label \
+    --text_hid_dim 300 --prototype_dim 512 \
 ```
 
 ## Experiments to try
