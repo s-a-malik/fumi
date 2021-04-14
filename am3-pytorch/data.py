@@ -249,7 +249,7 @@ class ZanimClassDataset(ClassDataset):
     def __getitem__(self, index):
         indices = self.category_id_map[self.categories[index%self.num_classes]]
         mask = self.mask[index] if self.tokenisation_mode == TokenisationMode.BERT else None
-    return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index%self.num_classes, attention_mask=mask, target_transform=self.get_target_transform(index))
+        return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index%self.num_classes, attention_mask=mask, target_transform=self.get_target_transform(index))
 
 class ZanimDataset(Dataset):
 
