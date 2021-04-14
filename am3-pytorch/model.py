@@ -63,7 +63,8 @@ class AM3(nn.Module):
         -------
         - inputs (tuple): 
             - idx:  image ids
-            - text: padded tokenised sequence. (tuple for BERT of input_ids and attn_mask - TODO). 
+            - text: padded tokenised sequence. (tuple for BERT of input_ids and attn_mask). 
+            - attn_mask: attention mask for bert (only if BERT)
             - im:   precomputed image embeddings
         - im_only (bool): flag to only use image input (for query set)
 
@@ -72,14 +73,19 @@ class AM3(nn.Module):
         - im_embeddings (torch.FloatTensor): image in prototype space (batch, NxK, hid_dim)
         - (if not im_only) text_embeddings (torch.FloatTensor): text in prototype space (batch, NxK, hid_dim)
         """
-        idx, text, im = inputs
-        im_embeddings = self.image_encoder(im)      # (b x N*K x 512)
+        # unpack input
+        if self.text_encoder_type == "BERT":
+            idx, text, attn_mask, im = inputs
+        else:
+            idx, text, im = inputs
+        
+        # process
+        im_embeddings = self.image_encoder(im)      # (b x N*K x 512)  
         if not im_only:
-            # text input is same shape as images
             if self.text_encoder_type == "BERT":
+                # need to reshape batch for BERT input
                 B, NK, seq_len = text.shape
-                # bert_output = self.text_encoder(**text)   # if text is with attn mask
-                bert_output = self.text_encoder(text.view(-1, seq_len))
+                bert_output = self.text_encoder([text.view(-1, seq_len), attn_mask.view(-1, seq_len)])
                 # get [CLS] token
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
             else:
@@ -89,6 +95,7 @@ class AM3(nn.Module):
             return im_embeddings, text_embeddings, lamda
         else:
             return im_embeddings
+
 
     def evaluate(self, batch, optimizer, num_ways, device, task="train"):
         """Run one episode through model
