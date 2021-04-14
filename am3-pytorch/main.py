@@ -212,7 +212,7 @@ def test_loop(model, test_dataloader, max_num_batches):
         if batch_idx > max_num_batches - 1:
             break
                     
-    return avg_test_loss, avg_test_acc, test_preds, test_trues, test_idx, task_idx
+    return avg_test_loss.avg, avg_test_acc.avg, test_preds, test_trues, test_idx, task_idx
 
 
 def parse_args():
