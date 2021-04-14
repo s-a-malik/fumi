@@ -29,6 +29,7 @@ def main(args):
     results_path = f"{args.log_dir}/results"   
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
+    os.environ['WANDB_DISABLE_CODE']='true'         # disable code logging
     run = wandb.init(entity="multimodal-image-cls", 
                      project="am3",
                      group=args.experiment)
@@ -162,7 +163,7 @@ def init_optim(args, model):
     if args.optim == "adam":
         optimizer = torch.optim.Adam(params=model.parameters(),
                                      lr=args.lr,
-                                     weight_decay=arg.weight_decay)
+                                     weight_decay=args.weight_decay)
     elif args.optim == "SGD":
         optimizer = torch.optim.SGD(params=model.parameters(),
                                     lr=args.lr,
