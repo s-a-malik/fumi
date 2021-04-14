@@ -189,7 +189,7 @@ class AM3(nn.Module):
         text_prototypes.scatter_add_(1, indices, text_embeddings).div_(num_samples)
 
         # should all be equal anyway. TODO check they are.
-        lamdas_per_class = lamda.new_zeros((batch_size, num_classes, 1))
+        lamdas_per_class = lamdas.new_zeros((batch_size, num_classes, 1))
         lamdas_per_class.scatter_add_(1, targets.unsqueeze(-1), lamdas).div_(num_samples)
 
         # convex combination
