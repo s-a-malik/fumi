@@ -90,7 +90,7 @@ def get_zanim(data_dir: str, num_way: int, num_shots: int, num_shots_test: int, 
         # all the same dictionary anyway
         dictionary = train.dictionary
     else:
-        dictionary = None
+        dictionary = {}
     
     return train_split, val_split, test_split, dictionary
 
@@ -107,7 +107,7 @@ def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
     test = datasets.CUB(data_dir, ways=num_way, shots=num_shots, test_shots=int(100/num_shots), meta_split="test",
                         download=True)
     
-    dictionary = None
+    dictionary = {}
 
     return train, val, test, dictionary
 

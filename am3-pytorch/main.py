@@ -25,10 +25,14 @@ def main(args):
     # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
 
     # set up directories and logs
-    model_path = f"{args.log_dir}/models"
+    # model_path = f"{args.log_dir}/models" # saved to wandb run
     results_path = f"{args.log_dir}/results"   
-    os.makedirs(model_path, exist_ok=True)
+    # os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
+    run = wandb.init(entity="multimodal-image-cls", 
+                     project="am3",
+                     group=args.experiment)
+    wandb.config.update(args)
 
     # load datasets
     train_loader, val_loader, test_loader = get_dataset(args)
@@ -50,11 +54,6 @@ def main(args):
 
     # skip training if just testing
     if not args.evaluate:
-        # set up logs
-        run = wandb.init(entity="multimodal-image-cls", 
-                         project="am3",
-                         group=args.experiment)
-        wandb.config.update(args)
 
         # get best val loss
         best_loss, best_acc = test_loop(model, val_loader, max_test_batches)
