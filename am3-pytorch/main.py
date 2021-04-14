@@ -57,59 +57,62 @@ def main(args):
     if not args.evaluate:
         # get best val loss
         best_loss, best_acc, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
+        print(f"initial loss: {best_loss}, acc: {best_acc}")
         best_batch_idx = 0
         
         # use try, except to be able to stop partway through training
         try:
             # Training loop
             # do in epochs with a max_num_batches instead?
-            with tqdm(train_loader, total=args.epochs) as pbar:
-                for batch_idx, batch in enumerate(pbar):
-                    # TODO make this into an evaluate function
-                    train_loss, train_acc = model.evaluate(
-                        batch=batch,
-                        optimizer=optimizer,
-                        num_ways=args.num_ways,
-                        device=args.device,
-                        task="train")
+            for batch_idx, batch in enumerate(tqdm(train_loader, total=args.epochs)):
+                # TODO make this into an evaluate function
+                train_loss, train_acc = model.evaluate(
+                    batch=batch,
+                    optimizer=optimizer,
+                    num_ways=args.num_ways,
+                    device=args.device,
+                    task="train")
 
-                    # log
-                    pbar.set_postfix(accuracy='{0:.4f}'.format(train_acc.item()))
-                    wandb.log({"train/acc": train_acc,
-                               "train/loss": train_loss}, step=batch_idx)
+                # log
+                # pbar.set_postfix(accuracy='{0:.4f}'.format(train_acc.item()))
+                wandb.log({"train/acc": train_acc,
+                            "train/loss": train_loss}, step=batch_idx)
 
-                    # eval on validation set periodically
-                    if batch_idx % 100 == 0:
-                        # evaluate on val set
-                        val_loss, val_acc, _, _, _, _ = test_loop(
-                            model, val_loader, max_test_batches)
-                        is_best = val_loss < best_loss
-                        if is_best:
-                            best_loss = val_loss
-                            best_batch_idx = batch_idx
-                        # TODO could log examples
-                        wandb.log({"val/acc": val_acc,
-                                   "val/loss": val_loss}, step=batch_idx)
+                # eval on validation set periodically
+                if batch_idx % 10 == 0:
+                    # evaluate on val set
+                    val_loss, val_acc, _, _, _, _ = test_loop(
+                        model, val_loader, max_test_batches)
+                    is_best = val_loss < best_loss
+                    if is_best:
+                        best_loss = val_loss
+                        best_batch_idx = batch_idx
+                    # TODO could log examples
+                    wandb.log({"val/acc": val_acc,
+                                "val/loss": val_loss}, step=batch_idx)
 
-                        # save checkpoint
-                        checkpoint_dict = {
-                            "batch_idx": batch_idx,
-                            "state_dict": model.state_dict(),
-                            "best_loss": best_loss,
-                            "optimizer": optimizer.state_dict(),
-                            "args": vars(args)
-                        }
-                        utils.save_checkpoint(
-                            checkpoint_dict,
-                            is_best,
-                            checkpoint_file=os.path.join(wandb.run.dir, "ckpt.pth.tar"),
-                            best_file=os.path.join(wandb.run.dir, "best.pth.tar")
-                        )
-                        # TODO save example outputs?
+                    # save checkpoint
+                    checkpoint_dict = {
+                        "batch_idx": batch_idx,
+                        "state_dict": model.state_dict(),
+                        "best_loss": best_loss,
+                        "optimizer": optimizer.state_dict(),
+                        "args": vars(args)
+                    }
+                    utils.save_checkpoint(
+                        checkpoint_dict,
+                        is_best,
+                        checkpoint_file=os.path.join(wandb.run.dir, "ckpt.pth.tar"),
+                        best_file=os.path.join(wandb.run.dir, "best.pth.tar")
+                    )
+                    # TODO save example outputs?
 
-                    # break after max iters or early stopping
-                    if (batch_idx >= args.epochs) or (batch_idx - best_batch_idx > args.patience):
-                        break
+                    print(f"Batch: {batch_idx+1}\ntrain/loss: {train_loss}, train/acc: {train_acc}"
+                            f"\nval/loss: {val_loss}, val/acc: {val_acc}")
+
+                # break after max iters or early stopping
+                if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
+                    break
         except KeyboardInterrupt():
             pass
     
@@ -190,22 +193,24 @@ def test_loop(model, test_dataloader, max_num_batches):
     test_idx = []
     task_idx = []
     
-    with tqdm(test_dataloader, total=max_num_batches) as pbar:
-        for batch_idx, batch in enumerate(pbar):
-            test_loss, test_acc, preds, trues, idx = model.evaluate(
-                batch=batch,
-                optimizer=None,
-                num_ways=args.num_ways,
-                device=args.device,
-                task="test")
+    for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches)):
+        test_loss, test_acc, preds, trues, idx = model.evaluate(
+            batch=batch,
+            optimizer=None,
+            num_ways=args.num_ways,
+            device=args.device,
+            task="test")
 
-            avg_test_acc.update(test_acc)
-            avg_test_loss.update(test_loss)
-            test_preds += preds.tolist()
-            test_trues += trues.tolist()
-            test_idx += idx.tolist()
-            # TODO fix to get tasks not batches
-            task_idx.append([batch_idx for i in range(len(idx))])
+        avg_test_acc.update(test_acc)
+        avg_test_loss.update(test_loss)
+        test_preds += preds.tolist()
+        test_trues += trues.tolist()
+        test_idx += idx.tolist()
+        # TODO fix to get tasks not batches
+        task_idx.append([batch_idx for i in range(len(idx))])
+
+        if batch_idx > max_num_batches - 1:
+            break
                     
     return avg_test_loss, avg_test_acc, test_preds, test_trues, test_idx, task_idx
 
