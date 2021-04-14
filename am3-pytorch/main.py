@@ -65,7 +65,7 @@ def main(args):
             # Training loop
             # do in epochs with a max_num_batches instead?
             # for batch_idx, batch in enumerate(tqdm(train_loader, total=args.epochs)):
-            for batch_idx, batch in enumerate(train_loader, total=args.epochs):
+            for batch_idx, batch in enumerate(train_loader):
                 # TODO make this into an evaluate function
                 train_loss, train_acc = model.evaluate(
                     batch=batch,
