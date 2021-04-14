@@ -191,17 +191,13 @@ class AM3(nn.Module):
         im_prototypes = im_embeddings.new_zeros((batch_size, num_classes, embedding_size))
         im_prototypes.scatter_add_(1, indices, im_embeddings).div_(num_samples)   # compute mean embedding of each class
 
-        # should all be equal anyway. TODO check they are.
+        # should all be equal anyway (checked)
         text_prototypes = text_embeddings.new_zeros((batch_size, num_classes, embedding_size))
         text_prototypes.scatter_add_(1, indices, text_embeddings).div_(num_samples)
-        print(text_embeddings)
-        print(text_prototypes)
 
-        # should all be equal anyway. TODO check they are.
+        # should all be equal (checked)
         lamdas_per_class = lamdas.new_zeros((batch_size, num_classes, 1))
         lamdas_per_class.scatter_add_(1, targets.unsqueeze(-1), lamdas).div_(num_samples)
-        print(lamdas)
-        print(lamdas_per_class)
 
         # convex combination
         prototypes = lamdas_per_class * im_prototypes + (1-lamdas_per_class) * text_prototypes
