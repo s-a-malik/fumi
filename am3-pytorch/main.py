@@ -3,7 +3,6 @@
 
 import os
 import sys
-import glob
 import argparse
 from tqdm.autonotebook import tqdm
 import wandb
@@ -25,16 +24,16 @@ def main(args):
     # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
 
     # set up directories and logs
-    model_path = f"{args.log_dir}/models"       # models are saved to wandb run, this is local storage for restoring
+    model_path = f"./checkpoints"       # models are saved to wandb run, this is local storage for restoring
     results_path = f"{args.log_dir}/results"
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
     job_type = "eval" if args.evaluate else "train"
-    run = wandb.init(entity="multimodal-image-cls", 
+    run = wandb.init(entity="multimodal-image-cls",
                      project="am3",
                      group=args.experiment,
                      job_type=job_type,
-                     save_code=False)
+                     save_code=True)
     wandb.config.update(args)
 
     # load datasets
