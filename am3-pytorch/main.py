@@ -1,4 +1,4 @@
-"""AM3 in Pytorch.
+"""AM3 implementation in Pytorch.
 """
 
 import os
@@ -28,10 +28,12 @@ def main(args):
     results_path = f"{args.log_dir}/results"
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
-    os.environ['WANDB_DISABLE_CODE'] = "true"         # disable code logging
+    job_type = "eval" if args.evaluate else "train"
     run = wandb.init(entity="multimodal-image-cls", 
                      project="am3",
-                     group=args.experiment)
+                     group=args.experiment,
+                     job_type=job_type,
+                     save_code=False)
     wandb.config.update(args)
 
     # load datasets
@@ -75,23 +77,26 @@ def main(args):
                     task="train")
 
                 # log
-                # pbar.set_postfix(accuracy='{0:.4f}'.format(train_acc.item()))
+                # TODO track lr etc as well
                 wandb.log({"train/acc": train_acc,
-                            "train/loss": train_loss,
-                            "train/avg_lamda": train_lamda}, step=batch_idx)
+                           "train/loss": train_loss,
+                           "train/avg_lamda": train_lamda,
+                           "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
 
                 # eval on validation set periodically
-                if batch_idx % 10 == 0:
+                if batch_idx % args.eval_freq == 0:
                     # evaluate on val set
                     val_loss, val_acc, _, _, _, _, val_lamda = test_loop(model, val_loader, max_test_batches)
                     is_best = val_loss < best_loss
                     if is_best:
                         best_loss = val_loss
                         best_batch_idx = batch_idx
-                    # TODO could log examples
                     wandb.log({"val/acc": val_acc,
                                 "val/loss": val_loss,
-                                "val/avg_lamda": avg_lamda}, step=batch_idx)
+                                "val/avg_lamda": val_lamda}, step=batch_idx)
+                    # TODO save example outputs?
+                    # TODO F1/prec/recall etc.?
+                    # TODO wandb summary metrics? 
 
                     # save checkpoint
                     checkpoint_dict = {
@@ -102,10 +107,9 @@ def main(args):
                         "args": vars(args)
                     }
                     utils.save_checkpoint(checkpoint_dict, is_best)
-                    # TODO save example outputs?
 
-                    print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
-                            f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {avg_lamda}")
+                    print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}, train/avg_lamda: {train_lamda}"
+                          f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {val_lamda}")
 
                 # break after max iters or early stopping
                 if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
@@ -116,7 +120,7 @@ def main(args):
     # test
     test_loss, test_acc, test_preds, test_true, test_idx, task_idx, avg_lamda = test_loop(
         model, test_loader, max_test_batches)
-    print(f"test loss: {test_loss}, test acc: {test_acc}, test avg lamda: {avg_lamda}")
+    print(f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}, test avg lamda: {avg_lamda}")
     
     # TODO more metrics - F1, precision, recall etc.
 
@@ -124,13 +128,13 @@ def main(args):
     wandb.log({
         "test/acc": test_acc,
         "test/loss": test_loss,
-        "test/avg_lamda": avg_lamda}, step=batch_idx)
+        "test/avg_lamda": avg_lamda})
     df = pd.DataFrame({
         "image_idx": test_idx,
         "task_idx": task_idx,
         "preds": test_preds,
         "targets": test_true})
-    df.to_csv(path_or_buf=f"{results_path}/run_{wandb.run.name}")
+    df.to_csv(path_or_buf=f"{results_path}/run_{wandb.run.name}.csv")
 
     wandb.finish()
 
@@ -301,11 +305,11 @@ def parse_args():
                         help="Type of vision feature extractor (resnet, precomputed)")
     parser.add_argument("--im_emb_dim",
                         type=int,
-                        default=512,
+                        default=2048,
                         help="Dimension of image embedding (if precomputed)")
     parser.add_argument("--text_encoder",
                         type=str,
-                        default="glove",
+                        default="BERT",
                         help="Type of text embedding (glove, BERT)")
     parser.add_argument("--fine_tune",
                         action="store_true",
@@ -336,6 +340,10 @@ def parse_args():
                         type=int,
                         default=100,
                         help="Early stopping patience")   
+    parser.add_argument("--eval_freq",
+                        type=int,
+                        default=20,
+                        help="Number of batches between validation/checkpointing")  
     parser.add_argument("--experiment",
                         type=str,
                         default="debug",

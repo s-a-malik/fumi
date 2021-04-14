@@ -26,6 +26,11 @@ from gensim import corpora
 
 def get_dataset(args):
     """Return the appropriate dataset, with preprocessing transforms
+    Returns:
+    - train_loader (BatchMetaDataLoader): Train dataloader
+    - val_loader (BatchMetaDataLoader): Validation dataloader
+    - test_loader (BatchMetaDataLoader): Test dataloader
+    - dictionary: token2id dict for word tokenisation if not BERT (else None)
     """
     dataset = args.dataset
     data_dir = args.data_dir

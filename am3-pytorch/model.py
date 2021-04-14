@@ -60,7 +60,6 @@ class AM3(nn.Module):
     def forward(self, inputs, im_only=False):
         """
         Params:
-        -------
         - inputs (tuple): 
             - idx:  image ids
             - text: padded tokenised sequence. (tuple for BERT of input_ids and attn_mask). 
@@ -69,14 +68,12 @@ class AM3(nn.Module):
         - im_only (bool): flag to only use image input (for query set)
 
         Returns:
-        -------
-        - im_embeddings (torch.FloatTensor): image in prototype space (batch, NxK, hid_dim)
-        - (if not im_only) text_embeddings (torch.FloatTensor): text in prototype space (batch, NxK, hid_dim)
+        - im_embeddings (torch.FloatTensor): image in prototype space (b, NxK, emb_dim)
+        - (if not im_only) text_embeddings (torch.FloatTensor): text in prototype space (b, NxK, emb_dim)
         """
         # unpack input
         if self.text_encoder_type == "BERT":
             idx, text, attn_mask, im = inputs
-            # print(idx.shape, text.shape, attn_mask.shape, im.shape)
         else:
             idx, text, im = inputs
         
@@ -102,12 +99,13 @@ class AM3(nn.Module):
         """Run one episode through model
         Params:
         - batch (dict): meta-batch of tasks
-        - optimizer (nn.optim): 
+        - optimizer (nn.optim): optimizer tied to model weights.
         - num_ways (int): number 'N' of classes to choose from.
         - device (torch.device): cuda or cpu
         - task (str): train, val, test
         Returns:
-        - loss, acc
+        - loss: prototypical loss
+        - acc: accuracy on query set
         - if test: also return predictions (class for each query)
         """
         if task == "train":
@@ -155,31 +153,19 @@ class AM3(nn.Module):
         else:
             return loss, acc, avg_lamda.detach().cpu().numpy()
         
-    # from pytorch meta (need to change to AM3)
     def get_prototypes(self, im_embeddings, text_embeddings, lamdas, targets, num_classes):
         """Compute the prototypes (the mean vector of the embedded training/support 
         points belonging to its class) for each classes in the task.
-        Parameters
-        ----------
-        im_embeddings : `torch.FloatTensor` instance
-            A tensor containing the image embeddings of the support points. This tensor 
-            has shape `(batch_size, num_examples, embedding_size)`.
-        text_embeddings: `torch.FloatTensor` instance
-            A tensor containing the text embeddings of the support points. This tensor 
-            has shape `(batch_size, num_examples, embedding_size)`.
-        lamda: `torch.FloatTensor` instance
-            A tensor containing the weighting of text for the prototype
-            has shape `(batch_size, num_examples, 1)`.
-        targets : `torch.LongTensor` instance
-            A tensor containing the targets of the support points. This tensor has 
-            shape `(batch_size, num_examples)`.
-        num_classes : int
-            Number of classes in the task.
-        Returns
-        -------
-        prototypes : `torch.FloatTensor` instance
-            A tensor containing the prototypes for each class. This tensor has shape
-            `(batch_size, num_classes, embedding_size)`.
+        Params:
+        - im_embeddings (torch.FloatTensor): image embeddings of the support points
+        (b, N*K, emb_dim).
+        - text_embeddings (torch.FloatTensor): text embeddings of the support points
+        (b, N*K, emb_dim).
+        - lamda (torch.FloatTensor): weighting of text for the prototype (b, N*K, 1).
+        targets (torch.LongTensor): targets of the support points (b, N*K).
+        num_classes (int): Number of classes in the task.
+        Returns:
+        - prototypes (torch.FloatTensor): prototypes for each class (b, N, emb_dim).
         """
         batch_size, embedding_size = im_embeddings.size(0), im_embeddings.size(-1)
 
@@ -207,7 +193,6 @@ class AM3(nn.Module):
 
 def get_num_samples(targets, num_classes, dtype=None):
     """Returns a vector with the number of samples in each class.
-    - num_samples (torch.LongTensor): (b x N)
     """
     batch_size = targets.size(0)
     with torch.no_grad():

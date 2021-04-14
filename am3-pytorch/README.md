@@ -19,7 +19,10 @@ Hyperparameters are set with argparse flags. Use `--evaluate` flag for testing a
 Example:
 
 ```bash
-python main.py --arg1 {arg1} --arg2 {arg2}
+python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
+    --experiment debug --num_shots 5 --num_ways 3 --num_shots_test 32 \
+    --im_encoder precomputed --text_encoder BERT --text_type label \
+    --text_hid_dim 300 --prototype_dim 512 \
 ```
 
 ## Experiments to try
@@ -28,16 +31,20 @@ python main.py --arg1 {arg1} --arg2 {arg2}
 - [ ] BERT class label embeddings
 - [ ] BERT class description embeddings
 - [ ] Plots of lamdba with different number of shots/ways
-- [ ] No text (just image prototype, lamda = 1)
+- [ ] No text (just image prototype, force lamda = 1 is probs easiest way to do this)
 - [ ] vary N, K etc.
 
 ## TODO
 
-- [ ] Implement the model and test end-to-end
-- [ ] Logs and model saving on wandb.
+- [x] Implement the model and test end-to-end
+- [x] Logs and model saving on wandb.
 - [ ] further metrics e.g. f1, prec, rec, lamda etc. 
 - [ ] add support to visualise batches (query/support sets)
-- [ ] add training stuff to improve performance (lr decay, augmentation etc.). 
+- [ ] add support for multiple training runs (or can do manually)
+- [ ] add training stuff to improve performance (lr decay, augmentation etc.)
 - [ ] Reproduce results on their datasets - need to get class labels from CUB etc. 
-- [ ] Use model on our datasets
 - [ ] Run experiments
+
+## Acknowledgements
+
+Some functions were built on code in the Torchmeta examples [repo](https://github.com/tristandeleu/pytorch-meta).
