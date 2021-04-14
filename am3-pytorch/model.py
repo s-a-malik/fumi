@@ -120,6 +120,7 @@ class AM3(nn.Module):
         train_inputs = [x.to(device) for x in train_inputs]
         train_targets = train_targets.to(device)                           # these are category IDs (global)
         train_im_embeddings, train_text_embeddings, train_lamda = self(train_inputs)
+        avg_lamda = torch.mean(train_lamda)
 
         # query set
         test_inputs, test_targets = batch['test']
@@ -150,7 +151,7 @@ class AM3(nn.Module):
             # TODO return the query/support images and text per task and lamdas to compare 
             # returning just the query set targets is not that helpful.
             test_idx = test_inputs[0]
-            return loss, acc, preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy()
+            return loss, acc, preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), avg_lamda.detach().cpu().numpy()
         else:
             return loss, acc
         

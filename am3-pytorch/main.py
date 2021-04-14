@@ -82,14 +82,15 @@ def main(args):
                 # eval on validation set periodically
                 if batch_idx % 10 == 0:
                     # evaluate on val set
-                    val_loss, val_acc, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
+                    val_loss, val_acc, _, _, _, _, val_lamda = test_loop(model, val_loader, max_test_batches)
                     is_best = val_loss < best_loss
                     if is_best:
                         best_loss = val_loss
                         best_batch_idx = batch_idx
                     # TODO could log examples
                     wandb.log({"val/acc": val_acc,
-                                "val/loss": val_loss}, step=batch_idx)
+                                "val/loss": val_loss,
+                                "val/avg_lamda": avg_lamda}, step=batch_idx)
 
                     # save checkpoint
                     checkpoint_dict = {
@@ -103,7 +104,7 @@ def main(args):
                     # TODO save example outputs?
 
                     print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
-                            f"\nval/loss: {val_loss}, val/acc: {val_acc}")
+                            f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {avg_lamda}")
 
                 # break after max iters or early stopping
                 if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
@@ -112,9 +113,9 @@ def main(args):
             pass
     
     # test
-    test_loss, test_acc, test_preds, test_true, test_idx, task_idx = test_loop(
+    test_loss, test_acc, test_preds, test_true, test_idx, task_idx, avg_lamda = test_loop(
         model, test_loader, max_test_batches)
-    print(f"test loss: {test_loss}, test acc: {test_acc}")
+    print(f"test loss: {test_loss}, test acc: {test_acc}, test avg lamda: {avg_lamda}")
     
     # TODO more metrics - F1, precision, recall etc.
 
@@ -187,9 +188,10 @@ def test_loop(model, test_dataloader, max_num_batches):
     test_trues = []
     test_idx = []
     task_idx = []
+    avg_lamda = utils.AverageMeter()
     
     for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches)): 
-        test_loss, test_acc, preds, trues, idx = model.evaluate(
+        test_loss, test_acc, preds, trues, idx, lamda = model.evaluate(
             batch=batch,
             optimizer=None,
             num_ways=args.num_ways,
@@ -198,6 +200,7 @@ def test_loop(model, test_dataloader, max_num_batches):
 
         avg_test_acc.update(test_acc)
         avg_test_loss.update(test_loss)
+        avg_lamda.update(lamda)
         test_preds += preds.tolist()
         test_trues += trues.tolist()
         test_idx += idx.tolist()
@@ -207,7 +210,7 @@ def test_loop(model, test_dataloader, max_num_batches):
         if batch_idx > max_num_batches - 1:
             break
                     
-    return avg_test_loss.avg, avg_test_acc.avg, test_preds, test_trues, test_idx, task_idx
+    return avg_test_loss.avg, avg_test_acc.avg, test_preds, test_trues, test_idx, task_idx, avg_lamda.avg
 
 
 def parse_args():
