@@ -38,7 +38,7 @@ def main(args):
     wandb.config.update(args)
     # save code
     code = wandb.Artifact('src', type='code')
-    for path in glob.glob('**/*.py', recursive=True):
+    for path in glob.glob('*.py', recursive=True):
         code.add_file(path)
     run.log_artifact(code)
 
