@@ -57,7 +57,7 @@ def main(args):
     if not args.evaluate:
 
         # get best val loss
-        best_loss, best_acc = test_loop(model, val_loader, max_test_batches)
+        best_loss, best_acc, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
         best_batch_idx = 0
         
         # use try, except to be able to stop partway through training

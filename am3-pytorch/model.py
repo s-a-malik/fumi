@@ -117,15 +117,16 @@ class AM3(nn.Module):
         # support set
         train_inputs, train_targets = batch['train']            # (b x N*K x 512) for images
         train_inputs = [x.to(device) for x in train_inputs]
-        train_targets = train_targets
+        train_targets = train_targets.to(device)                           # these are category IDs (global)
         train_im_embeddings, train_text_embeddings, train_lamda = self(train_inputs)
 
         # query set
         test_inputs, test_targets = batch['test']
         test_inputs = [x.to(device) for x in test_inputs]
-        test_targets = test_targets
+        test_targets = test_targets.to(device)
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
+        # need to change the targets to in range 0-num_ways
         prototypes = self.get_prototypes(
             train_im_embeddings,
             train_text_embeddings,

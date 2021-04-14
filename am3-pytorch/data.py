@@ -14,7 +14,7 @@ from torchvision import transforms
 from torchmeta.utils.data import Dataset, ClassDataset, CombinationMetaDataset
 import torchmeta.datasets.helpers as datasets
 from torchmeta.utils.data import BatchMetaDataLoader
-from torchmeta.transforms import ClassSplitter
+from torchmeta.transforms import ClassSplitter, Categorical
 
 from transformers import BertTokenizer
 
@@ -130,18 +130,20 @@ class TokenisationMode(Enum):
 
 class Zanim(CombinationMetaDataset):
 
-    def __init__(self, root, json_path="train.json", num_classes_per_task=None, meta_train=False, meta_val=False, meta_test=False, tokenisation_mode: TokenisationMode = TokenisationMode.BERT, full_description=True, remove_stop_words=True):
+    def __init__(self, root, json_path="train.json", num_classes_per_task=None, meta_train=False, meta_val=False, meta_test=False, tokenisation_mode: TokenisationMode = TokenisationMode.BERT, full_description=True, remove_stop_words=True, target_transform=None):
         """
         :param root: the path to the root directory of the dataset
         :param json_path: the path to the json file containing the annotations
         """
+        if target_transform is None:
+            target_transform = Categorical(num_classes_per_task)
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
         dataset = ZanimClassDataset(root, json_path, meta_train=meta_train, meta_val=meta_val, meta_test=meta_test,
                                     tokenisation_mode=tokenisation_mode, full_description=full_description, remove_stop_words=remove_stop_words)
         super().__init__(dataset, num_classes_per_task)
-        super().__init__(self.dataset, num_classes_per_task)
+        super().__init__(self.dataset, num_classes_per_task, target_transform=target_transform)
 
     @property
     def dictionary(self):
@@ -247,12 +249,12 @@ class ZanimClassDataset(ClassDataset):
     def __getitem__(self, index):
         indices = self.category_id_map[self.categories[index%self.num_classes]]
         mask = self.mask[index] if self.tokenisation_mode == TokenisationMode.BERT else None
-        return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index%self.num_classes, attention_mask=mask)
+    return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index%self.num_classes, attention_mask=mask, target_transform=self.get_target_transform(index))
 
 class ZanimDataset(Dataset):
 
-    def __init__(self, index, image_ids, data, description, category_id, attention_mask=None):
-        super().__init__(index)
+    def __init__(self, index, image_ids, data, description, category_id, attention_mask=None, target_transform=None):
+        super().__init__(index, target_transform=target_transform)
         self.data = data
         self.category_id = category_id
         self.description = description
@@ -263,8 +265,11 @@ class ZanimDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
+        target = self.category_id
+        if self.target_transform is not None:
+            target = self.target_transform(target)
         if self.attention_mask is None:
-            return (self.image_ids[index], torch.tensor(self.description), self.data[index]), self.category_id
+            return (self.image_ids[index], torch.tensor(self.description), self.data[index]), target
         else:
-            return (self.image_ids[index], torch.tensor(self.description), torch.tensor(self.attention_mask), self.data[index]), self.category_id
+            return (self.image_ids[index], torch.tensor(self.description), torch.tensor(self.attention_mask), self.data[index]), target
 
