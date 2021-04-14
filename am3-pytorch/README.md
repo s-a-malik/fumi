@@ -41,3 +41,7 @@ python main.py --arg1 {arg1} --arg2 {arg2}
 - [ ] Reproduce results on their datasets - need to get class labels from CUB etc. 
 - [ ] Use model on our datasets
 - [ ] Run experiments
+
+## Acknowledgements
+
+Some functions were built on code in the Torchmeta examples repo.

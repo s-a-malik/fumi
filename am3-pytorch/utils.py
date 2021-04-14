@@ -10,26 +10,16 @@ import torch.nn.functional as F
 import wandb
 
 def get_preds(prototypes, embeddings, targets):
-    """CREDIT: https://github.com/tristandeleu/pytorch-meta/blob/master/examples/protonet
-    Compute the accuracy of the prototypical network on the test/query points.
-    Parameters
-    ----------
-    prototypes : `torch.FloatTensor` instance
-        A tensor containing the prototypes for each class. This tensor has shape 
-        `(meta_batch_size, num_classes, embedding_size)`.
-    embeddings : `torch.FloatTensor` instance
-        A tensor containing the embeddings of the query points. This tensor has 
-        shape `(meta_batch_size, num_examples, embedding_size)`.
-    targets : `torch.LongTensor` instance
-        A tensor containing the targets of the query points. This tensor has 
-        shape `(meta_batch_size, num_examples)`.
-    Returns
-    -------
-    accuracy : `torch.FloatTensor` instance
-        Mean accuracy on the query points.
+    """Compute the accuracy of the prototypical network on the test/query points.
+    Params:
+    - prototypes (torch.FloatTensor): prototypes for each class (b, N, emb_dim).
+    - embeddings (torch.FloatTensor): embeddings of the query points (b, N*K, emb_dim).
+    - targets (torch.LongTensor): targets of the query points (b, N*K).
+    Returns:
+    - preds (torch.LongTensor): predicted classes of the query points (b, N*K)
+    - accuracy (torch.FloatTensor): Mean accuracy on the query points.
     """
-    # using a KD tree would be better
-
+    # TODO sing a KD tree would be better?
     sq_distances = torch.sum((prototypes.unsqueeze(1)
         - embeddings.unsqueeze(2)) ** 2, dim=-1)
     _, preds = torch.min(sq_distances, dim=-1)
@@ -39,21 +29,12 @@ def get_preds(prototypes, embeddings, targets):
 def prototypical_loss(prototypes, embeddings, targets, **kwargs):
     """Compute the loss (i.e. negative log-likelihood) for the prototypical 
     network, on the test/query points.
-    Parameters
-    ----------
-    prototypes : `torch.FloatTensor` instance
-        A tensor containing the prototypes for each class. This tensor has shape 
-        `(batch_size, num_classes, embedding_size)`.
-    embeddings : `torch.FloatTensor` instance
-        A tensor containing the embeddings of the query points. This tensor has 
-        shape `(batch_size, num_examples, embedding_size)`.
-    targets : `torch.LongTensor` instance
-        A tensor containing the targets of the query points. This tensor has 
-        shape `(batch_size, num_examples)`.
-    Returns
-    -------
-    loss : `torch.FloatTensor` instance
-        The negative log-likelihood on the query points.
+    Parameters:
+    - prototypes (torch.FloatTensor): prototypes for each class (b, N, emb_dim).
+    - embeddings (torch.FloatTensor): embeddings of the query points (b, N*K, emb_dim).
+    - targets (torch.LongTensor): targets of the query points (b, N*K).
+    Returns:
+    - loss (torch.FloatTensor): The negative log-likelihood on the query points.
     """
     squared_distances = torch.sum((prototypes.unsqueeze(2)
         - embeddings.unsqueeze(1)) ** 2, dim=-1)
@@ -97,7 +78,10 @@ def save_checkpoint(checkpoint_dict: dict, is_best: bool):
 def load_checkpoint(model, optimizer, device, checkpoint_file: str):
     """Loads a model checkpoint.
     Params:
-    - 
+    - model (nn.Module): instantised model to load weights into
+    - optimizer (nn.optim): instantised optimizer to load state into
+    - device (torch.device): device the model is on.
+    - checkpoint_file (str): path to checkpoint to load.
     Returns:
     - model with loaded state dict
     - optimizer with loaded state dict

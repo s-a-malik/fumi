@@ -1,4 +1,4 @@
-"""AM3 in Pytorch.
+"""AM3 implementation in Pytorch.
 """
 
 import os
@@ -75,7 +75,6 @@ def main(args):
                     task="train")
 
                 # log
-                # pbar.set_postfix(accuracy='{0:.4f}'.format(train_acc.item()))
                 # TODO track lr etc as well
                 wandb.log({"train/acc": train_acc,
                            "train/loss": train_loss,
@@ -90,10 +89,12 @@ def main(args):
                     if is_best:
                         best_loss = val_loss
                         best_batch_idx = batch_idx
-                    # TODO could log examples
                     wandb.log({"val/acc": val_acc,
                                 "val/loss": val_loss,
                                 "val/avg_lamda": val_lamda}, step=batch_idx)
+                    # TODO save example outputs?
+                    # TODO F1/prec/recall etc.?
+                    # TODO wandb summary metrics? 
 
                     # save checkpoint
                     checkpoint_dict = {
@@ -104,9 +105,6 @@ def main(args):
                         "args": vars(args)
                     }
                     utils.save_checkpoint(checkpoint_dict, is_best)
-                    # TODO save example outputs?
-                    # TODO F1/prec/recall etc.?
-                    # TODO summary metrics? 
 
                     print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}, train/avg_lamda: {train_lamda}"
                           f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {val_lamda}")
@@ -128,7 +126,7 @@ def main(args):
     wandb.log({
         "test/acc": test_acc,
         "test/loss": test_loss,
-        "test/avg_lamda": avg_lamda}, step=batch_idx)
+        "test/avg_lamda": avg_lamda})
     df = pd.DataFrame({
         "image_idx": test_idx,
         "task_idx": task_idx,
