@@ -109,7 +109,7 @@ def main(args):
                 # break after max iters or early stopping
                 if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
                     break
-        except KeyboardInterrupt():
+        except KeyboardInterrupt:
             pass
     
     # test
@@ -122,7 +122,8 @@ def main(args):
     # save results
     wandb.log({
         "test/acc": test_acc,
-        "test/loss": test_loss}, step=batch_idx)
+        "test/loss": test_loss,
+        "test/avg_lamda": avg_lamda}, step=batch_idx)
     df = pd.DataFrame({
         "image_idx": test_idx,
         "task_idx": task_idx,
