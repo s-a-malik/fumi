@@ -1,4 +1,5 @@
-import torch
+import torch.utils.data as data
+from torch.utils.data import Subset
 import json
 import os
 import numpy as np
@@ -57,7 +58,7 @@ class ZanimClassDataset(ClassDataset):
     if not(root in json_path):
         json_path = os.path.join(root, json_path)
     self.root = root
-
+    self.tokenisation_mode = tokenisation_mode
     print('Loading json annotations')
     with open(json_path) as annotations:
       annotations = json.load(annotations)
@@ -106,7 +107,9 @@ class ZanimClassDataset(ClassDataset):
 
     if tokenisation_mode == TokenisationMode.BERT:
       tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
-      self.descriptions = tokenizer(self.descriptions, return_token_type_ids=False, return_tensors="pt", padding=True, truncation=True)['input_ids']
+      tokens = tokenizer(self.descriptions, return_token_type_ids=False, return_tensors="pt", padding=True, truncation=True)
+      self.descriptions = tokens['input_ids']
+      self.mask = tokens['attention_mask']
     elif tokenisation_mode == TokenisationMode.STANDARD:
       # since using a generator can't take len(tokenize(d))
       lengths = [sum([1 for w in tokenize(d)]) for d in self.descriptions]
@@ -141,19 +144,24 @@ class ZanimClassDataset(ClassDataset):
 
   def __getitem__(self, index):
     indices = self.category_id_map[self.categories[index%self.num_classes]]
-    return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index%self.num_classes)
+    mask = self.mask[index] if self.tokenisation_mode == TokenisationMode.BERT else None
+    return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index%self.num_classes, attention_mask=mask)
 
 class ZanimDataset(Dataset):
 
-    def __init__(self, index, image_ids, data, description, category_id):
+    def __init__(self, index, image_ids, data, description, category_id, attention_mask=None):
         super().__init__(index)
         self.data = data
         self.category_id = category_id
         self.description = description
         self.image_ids = image_ids
+        self.attention_mask = attention_mask
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, index):
-        return (self.image_ids[index], torch.tensor(self.description), self.data[index]), self.category_id
+        if self.attention_mask is None:
+          return (self.image_ids[index], torch.tensor(self.description), self.data[index]), self.category_id
+        else:
+          return (self.image_ids[index], torch.tensor(self.description), torch.tensor(self.attention_mask), self.data[index]), self.category_id
