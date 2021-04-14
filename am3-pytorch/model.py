@@ -85,7 +85,7 @@ class AM3(nn.Module):
             if self.text_encoder_type == "BERT":
                 # need to reshape batch for BERT input
                 B, NK, seq_len = text.shape
-                bert_output = self.text_encoder([text.view(-1, seq_len), attn_mask.view(-1, seq_len)])
+                bert_output = self.text_encoder(text.view(-1, seq_len), attention_mask=attn_mask.view(-1, seq_len))
                 # get [CLS] token
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
             else:
@@ -118,13 +118,10 @@ class AM3(nn.Module):
         train_inputs, train_targets = batch['train']            # (b x N*K x 512) for images
         train_inputs = [x.to(device) for x in train_inputs]
         train_targets = train_targets
-        print(train_inputs, "train inputs")
-        print(train_targets, "train targets")
         train_im_embeddings, train_text_embeddings, train_lamda = self(train_inputs)
 
         # query set
         test_inputs, test_targets = batch['test']
-        # need to also get image idx from this
         test_inputs = [x.to(device) for x in test_inputs]
         test_targets = test_targets
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
