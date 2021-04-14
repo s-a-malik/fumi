@@ -105,6 +105,8 @@ def main(args):
                     }
                     utils.save_checkpoint(checkpoint_dict, is_best)
                     # TODO save example outputs?
+                    # TODO F1/prec/recall etc.?
+                    # TODO summary metrics? 
 
                     print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}, train/avg_lamda: {train_lamda}"
                           f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {val_lamda}")
@@ -118,7 +120,7 @@ def main(args):
     # test
     test_loss, test_acc, test_preds, test_true, test_idx, task_idx, avg_lamda = test_loop(
         model, test_loader, max_test_batches)
-    print(f"test loss: {test_loss}, test acc: {test_acc}, test avg lamda: {avg_lamda}")
+    print(f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}, test avg lamda: {avg_lamda}")
     
     # TODO more metrics - F1, precision, recall etc.
 
@@ -132,7 +134,7 @@ def main(args):
         "task_idx": task_idx,
         "preds": test_preds,
         "targets": test_true})
-    df.to_csv(path_or_buf=f"{results_path}/run_{wandb.run.name}")
+    df.to_csv(path_or_buf=f"{results_path}/run_{wandb.run.name}.csv")
 
     wandb.finish()
 
