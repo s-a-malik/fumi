@@ -280,14 +280,34 @@ class ZanimDataset(Dataset):
 
 
 if __name__ == "__main__":
-    text_type = "label"
-    text_encoder = "BERT"
+    
+    import sys
+    import argparse
+    parser = argparse.ArgumentParser(description="data module test")
+    parser.add_argument("--text_type",
+                        type=str,
+                        default="label")
+    parser.add_argument("--text_encoder",
+                        type=str,
+                        default="BERT")                       
+    parser.add_argument("--data_dir",
+                        type=str,
+                        default="/content/drive/My Drive/MSc ML/NLP/NLP project/Dataset") 
+    parser.add_argument('--remove_stop_words',
+                        action='store_true',
+                        help="whether to remove stop words")
+
+    args = parser.parse_args(sys.argv[1:])
+
+    text_type = args.text_type
+    text_encoder = args.text_encoder
     num_way = 3
     num_shots = 5
     num_shots_test = 32
     batch_size = 5
-    remove_stop_words = False
-    data_dir = "/content/drive/My Drive/MSc ML/NLP/NLP project/Dataset"
+    remove_stop_words = True if args.remove_stop_words else False
+
+    data_dir = args.data_dir
     train, val, test, dictionary = get_zanim(data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
     print("dictionary", len(dictionary), dictionary)
     train_loader = BatchMetaDataLoader(train, batch_size=batch_size, shuffle=True, num_workers=0)

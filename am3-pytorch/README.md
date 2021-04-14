@@ -29,19 +29,20 @@ python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
 
 - [ ] AM3 baseline - GloVE class label embeddings. (they use resnet like us as well)
 - [ ] BERT class label embeddings
-- [ ] BERT class description embeddings
-- [ ] Plots of lamdba with different number of shots/ways
+- [ ] BERT class description embeddings (improves?)
+- [ ] Plots of lamdba with different number of shots/ways. Get particular example classes with high/low lambda
 - [ ] No text (just image prototype, force lamda = 1 is probs easiest way to do this)
 - [ ] vary N, K etc.
+- [ ] robustness testing of hypers and results? Maybe it is more stable on average if descriptions are used
 
 ## TODO
 
 - [x] Implement the model and test end-to-end
 - [x] Logs and model saving on wandb.
-- [ ] further metrics e.g. f1, prec, rec, lamda etc. 
-- [ ] add support to visualise batches (query/support sets)
+- [ ] log further metrics e.g. f1, prec, rec etc. (and example batches?)
 - [ ] add support for multiple training runs (or can do manually)
 - [ ] add training stuff to improve performance (lr decay, augmentation etc.)
+- [ ] Choose hyperparameters with val dataset loss (do a sweep?). Need to tune for each experiment...
 - [ ] Reproduce results on their datasets - need to get class labels from CUB etc. 
 - [ ] Run experiments
 
