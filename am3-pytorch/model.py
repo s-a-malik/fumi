@@ -81,14 +81,12 @@ class AM3(nn.Module):
                 B, NK, seq_len = text.shape
                 # bert_output = self.text_encoder(**text)   # if text is with attn mask
                 bert_output = self.text_encoder(text.view(-1, seq_len))
-                print(bert_output)
                 # get [CLS] token
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
-                print(text_encoding)
             else:
                 text_encoding = self.text_encoder(text)
             text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
-            lamda = F.sigmoid(self.h(text_embeddings))  # (b x N*K x 1)
+            lamda = torch.sigmoid(self.h(text_embeddings))  # (b x N*K x 1)
             return im_embeddings, text_embeddings, lamda
         else:
             return im_embeddings
@@ -219,8 +217,13 @@ if __name__ == "__main__":
     K = 2
     B = 5
     idx = torch.ones(B, N*K)
-    text = torch.ones(B, N*K, 512, dtype=torch.int64)
-    im = torch.ones(B, N*K, 128)   
+    text = torch.ones(B, N*K, 128, dtype=torch.int64)
+    im = torch.ones(B, N*K, 512)   
+    targets = 2*torch.ones(B, N*K)
     inputs = (idx, text, im)
-    output = model(inputs)
-    print(output)
+    im_embed, text_embed, lamdas = model(inputs)
+    print("output shapes (im, text, lamda)", im_embed.shape, text_embed.shape, lamdas.shape)
+    prototypes = model.get_prototypes(im_embed, text_embed, lamdas, targets, N)
+    print("prototypes", prototypes.shape)
+    loss = utils.prototypical_loss(prototypes, im_embed, targets)   # test on train set
+    print("loss", loss)
