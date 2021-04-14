@@ -33,7 +33,7 @@ def main(args):
                      project="am3",
                      group=args.experiment,
                      job_type=job_type,
-                     save_code=False)
+                     save_code=True)
     wandb.config.update(args)
 
     # load datasets
