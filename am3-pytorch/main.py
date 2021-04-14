@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 
 import torch
-from torchmeta.utils.data import BatchMetaDataLoader
 
 from model import AM3
 from data import get_dataset
@@ -26,10 +25,10 @@ def main(args):
 
     # set up directories and logs
     model_path = f"{args.log_dir}/models"       # models are saved to wandb run, this is local storage for restoring
-    results_path = f"{args.log_dir}/results"   
+    results_path = f"{args.log_dir}/results"
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
-    os.environ['WANDB_DISABLE_CODE']='true'         # disable code logging
+    os.environ['WANDB_DISABLE_CODE'] = "true"         # disable code logging
     run = wandb.init(entity="multimodal-image-cls", 
                      project="am3",
                      group=args.experiment)
@@ -37,7 +36,8 @@ def main(args):
 
     # load datasets
     train_loader, val_loader, test_loader, dictionary = get_dataset(args)
-    max_test_batches = int(args.batch_size/args.num_ep_test)
+    # TODO fix this to give exactly 1000. Change in dataloader probs.
+    max_test_batches = int(args.num_ep_test/args.batch_size)
 
     # initialise model and optim
     model = init_model(args, dictionary)
@@ -55,7 +55,6 @@ def main(args):
 
     # skip training if just testing
     if not args.evaluate:
-
         # get best val loss
         best_loss, best_acc, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
         best_batch_idx = 0
