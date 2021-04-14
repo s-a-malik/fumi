@@ -190,7 +190,7 @@ def test_loop(model, test_dataloader, max_num_batches):
     task_idx = []
     avg_lamda = utils.AverageMeter()
     
-    for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches)): 
+    for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches, position=0, leave=True)): 
         test_loss, test_acc, preds, trues, idx, lamda = model.evaluate(
             batch=batch,
             optimizer=None,
