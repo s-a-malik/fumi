@@ -231,7 +231,7 @@ class ZanimClassDataset(ClassDataset):
                 for z in tokenize(d)] for d in self.descriptions]
 
     def _copy_image_embeddings(self):
-        self._run_command(["cp", os.path.join(self.root, "image-embedding.hdf5"), "/content/"])
+        self._run_command(["cp", os.path.join(self.root, "image-embedding.hdf5"), "./"])
 
     def _run_command(self, command):
         pipes = subprocess.Popen(command, stderr=subprocess.PIPE)
