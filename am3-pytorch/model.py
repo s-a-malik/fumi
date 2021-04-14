@@ -219,7 +219,7 @@ if __name__ == "__main__":
     idx = torch.ones(B, N*K)
     text = torch.ones(B, N*K, 128, dtype=torch.int64)
     im = torch.ones(B, N*K, 512)   
-    targets = 2*torch.ones(B, N*K)
+    targets = 2*torch.ones(B, N*K, dtype=torch.int64)
     inputs = (idx, text, im)
     im_embed, text_embed, lamdas = model(inputs)
     print("output shapes (im, text, lamda)", im_embed.shape, text_embed.shape, lamdas.shape)
