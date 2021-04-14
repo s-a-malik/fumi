@@ -56,7 +56,7 @@ def main(args):
     # skip training if just testing
     if not args.evaluate:
         # get best val loss
-        best_loss, best_acc, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
+        best_loss, best_acc, _, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
         print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
         best_batch_idx = 0
         
@@ -67,7 +67,7 @@ def main(args):
             # for batch_idx, batch in enumerate(tqdm(train_loader, total=args.epochs)):
             for batch_idx, batch in enumerate(train_loader):
                 # TODO make this into an evaluate function
-                train_loss, train_acc = model.evaluate(
+                train_loss, train_acc, train_lamda = model.evaluate(
                     batch=batch,
                     optimizer=optimizer,
                     num_ways=args.num_ways,
@@ -77,7 +77,8 @@ def main(args):
                 # log
                 # pbar.set_postfix(accuracy='{0:.4f}'.format(train_acc.item()))
                 wandb.log({"train/acc": train_acc,
-                            "train/loss": train_loss}, step=batch_idx)
+                            "train/loss": train_loss,
+                            "train/avg_lamda": train_lamda}, step=batch_idx)
 
                 # eval on validation set periodically
                 if batch_idx % 10 == 0:
