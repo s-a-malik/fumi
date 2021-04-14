@@ -3,6 +3,7 @@
 
 import os
 import sys
+import glob
 import argparse
 from tqdm.autonotebook import tqdm
 import wandb
@@ -33,8 +34,13 @@ def main(args):
                      project="am3",
                      group=args.experiment,
                      job_type=job_type,
-                     save_code=True)
+                     save_code=False)
     wandb.config.update(args)
+    # save code
+    code = wandb.Artifact('src', type='code')
+    for path in glob.glob('**/*.py', recursive=True):
+        code.add_file(path)
+    run.log_artifact(code)
 
     # load datasets
     train_loader, val_loader, test_loader, dictionary = get_dataset(args)
