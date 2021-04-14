@@ -35,11 +35,11 @@ def main(args):
     wandb.config.update(args)
 
     # load datasets
-    train_loader, val_loader, test_loader = get_dataset(args)
+    train_loader, val_loader, test_loader, dictionary = get_dataset(args)
     max_test_batches = int(args.batch_size/args.num_ep_test)
 
     # initialise model and optim
-    model = init_model(args)
+    model = init_model(args, dictionary)
     optimizer = init_optim(args, model)
 
     # load previous state
@@ -134,7 +134,7 @@ def main(args):
     wandb.finish()
 
 
-def init_model(args):
+def init_model(args, dictionary):
     """Initialise model
     """
     # could do a better way
@@ -146,7 +146,8 @@ def init_model(args):
         args.prototype_dim,
         args.text_hid_dim,
         args.dropout,
-        args.fine_tune
+        args.fine_tune,
+        dictionary
     ]
     model = AM3(*model_args)
     wandb.watch(model, log="all")   # for tracking gradients etc.
