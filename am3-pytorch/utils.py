@@ -5,6 +5,8 @@ import os
 import shutil
 
 import torch
+import torch.nn.functional as F
+
 import wandb
 
 def get_preds(prototypes, embeddings, targets):
