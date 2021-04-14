@@ -12,7 +12,7 @@ import utils
 class AM3(nn.Module):
     def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False, dictionary=None):
         super(AM3, self).__init__()
-        self.im_emb_dim = im_emb_dim
+        self.im_emb_dim = im_emb_dim            # image embedding size
         self.text_encoder_type = text_encoder
         self.text_emb_dim = text_emb_dim
         self.text_hid_dim = text_hid_dim        # AM3 uses 300
@@ -89,11 +89,9 @@ class AM3(nn.Module):
                 bert_output = self.text_encoder(text.view(-1, seq_len), attention_mask=attn_mask.view(-1, seq_len))
                 # get [CLS] token
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
-                print(text_encoding.shape)
             else:
                 text_encoding = self.text_encoder(text)
             text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
-            print(text_embeddings.shape)
             lamda = torch.sigmoid(self.h(text_embeddings))  # (b x N*K x 1)
             return im_embeddings, text_embeddings, lamda
         else:
@@ -129,7 +127,6 @@ class AM3(nn.Module):
         test_targets = test_targets.to(device)
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
-        print(train_im_embeddings.shape, train_text_embeddings.shape, train_lamda.shape, train_targets.shape, test_im_embeddings.shape, test_targets.shape)
         # need to change the targets to in range 0-num_ways
         prototypes = self.get_prototypes(
             train_im_embeddings,
@@ -191,18 +188,20 @@ class AM3(nn.Module):
         num_samples = torch.max(num_samples, torch.ones_like(num_samples))      # prevents zero division error
         indices = targets.unsqueeze(-1).expand_as(im_embeddings)                # (b x N*K x 512)
 
-        print(indices.shape, num_samples.shape)
-
         im_prototypes = im_embeddings.new_zeros((batch_size, num_classes, embedding_size))
         im_prototypes.scatter_add_(1, indices, im_embeddings).div_(num_samples)   # compute mean embedding of each class
 
         # should all be equal anyway. TODO check they are.
         text_prototypes = text_embeddings.new_zeros((batch_size, num_classes, embedding_size))
         text_prototypes.scatter_add_(1, indices, text_embeddings).div_(num_samples)
+        print(text_embeddings)
+        print(text_prototypes)
 
         # should all be equal anyway. TODO check they are.
         lamdas_per_class = lamdas.new_zeros((batch_size, num_classes, 1))
         lamdas_per_class.scatter_add_(1, targets.unsqueeze(-1), lamdas).div_(num_samples)
+        print(lamdas)
+        print(lamdas_per_class)
 
         # convex combination
         prototypes = lamdas_per_class * im_prototypes + (1-lamdas_per_class) * text_prototypes

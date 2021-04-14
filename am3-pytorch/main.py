@@ -137,19 +137,18 @@ def main(args):
 def init_model(args, dictionary):
     """Initialise model
     """
-    # could do a better way
-    model_args = [
-        args.im_encoder,
-        args.im_emb_dim,
-        args.text_encoder,
-        args.text_emb_dim,
-        args.prototype_dim,
-        args.text_hid_dim,
-        args.dropout,
-        args.fine_tune,
-        dictionary
-    ]
-    model = AM3(*model_args)
+    model = AM3(
+        im_encoder=args.im_encoder,
+        im_emb_dim=args.im_emb_dim,
+        text_encoder=args.text_encoder,
+        text_emb_dim=args.text_emb_dim, 
+        text_hid_dim=args.text_hid_dim,
+        prototype_dim=args.prototype_dim,
+        dropout=args.dropout,
+        fine_tune=args.fine_tune,
+        dictionary=dictionary
+    )
+
     wandb.watch(model, log="all")   # for tracking gradients etc.
     model.to(args.device)
     return model
