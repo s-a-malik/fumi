@@ -80,7 +80,7 @@ def main(args):
                 wandb.log({"train/acc": train_acc,
                            "train/loss": train_loss,
                            "train/avg_lamda": train_lamda,
-                           "num_episodes": (batch_idx+1)*len(batch["train"][0][0])}, step=batch_idx)
+                           "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
 
                 # eval on validation set periodically
                 if batch_idx % args.eval_freq == 0:
