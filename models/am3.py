@@ -1,4 +1,4 @@
-"""Model classes for AM3 in Pytorch.
+"""Model classes and training loops for AM3 in Pytorch.
 """
 
 import wandb

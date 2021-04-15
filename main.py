@@ -1,7 +1,6 @@
 import os
 import sys
 import argparse
-from tqdm.autonotebook import tqdm
 import wandb
 
 import numpy as np

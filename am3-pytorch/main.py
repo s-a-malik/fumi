@@ -87,7 +87,8 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     - model (nn.Module): trained model
     """
     # get best val loss
-    best_loss, best_acc, _, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
+    best_loss, best_acc, _, _, _, _, _ = test_loop(
+        model, val_loader, max_test_batches, args.num_ways, args.device)
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
     
@@ -115,7 +116,8 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
             # eval on validation set periodically
             if batch_idx % args.eval_freq == 0:
                 # evaluate on val set
-                val_loss, val_acc, _, _, _, _, val_lamda = test_loop(model, val_loader, max_test_batches)
+                val_loss, val_acc, _, _, _, _, val_lamda = test_loop(
+                    model, val_loader, max_test_batches, args.num_ways, args.device)
                 is_best = val_loss < best_loss
                 if is_best:
                     best_loss = val_loss
@@ -149,7 +151,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     return model
 
 
-def test_loop(model, test_dataloader, max_num_batches):
+def test_loop(model, test_dataloader, max_num_batches, num_ways, device):
     """Evaluate model on val/test set.
     Test on 1000 randomly sampled tasks, each with 100 query samples (as in AM3)
     Returns:
@@ -172,8 +174,8 @@ def test_loop(model, test_dataloader, max_num_batches):
             test_loss, test_acc, preds, trues, idx, lamda = model.evaluate(
                 batch=batch,
                 optimizer=None,
-                num_ways=args.num_ways,
-                device=args.device,
+                num_ways=num_ways,
+                device=device,
                 task="test")
 
         avg_test_acc.update(test_acc)
