@@ -1,10 +1,9 @@
 """Model classes for AM3 in Pytorch.
 """
 
-import numpy as np
-
 import torch
 import torch.nn as nn
+import numpy as np
 
 import gensim.downloader as api
 from transformers import BertModel
