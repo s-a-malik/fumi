@@ -58,66 +58,8 @@ def main(args):
 
     # skip training if just testing
     if not args.evaluate:
-        # get best val loss
-        best_loss, best_acc, _, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
-        print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
-        best_batch_idx = 0
-        
-        # use try, except to be able to stop partway through training
-        try:
-            # Training loop
-            # do in epochs with a max_num_batches instead?
-            for batch_idx, batch in enumerate(train_loader):
-                # TODO make this into an evaluate function
-                train_loss, train_acc, train_lamda = model.evaluate(
-                    batch=batch,
-                    optimizer=optimizer,
-                    num_ways=args.num_ways,
-                    device=args.device,
-                    task="train")
+        model = training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
 
-                # log
-                # TODO track lr etc as well
-                wandb.log({"train/acc": train_acc,
-                           "train/loss": train_loss,
-                           "train/avg_lamda": train_lamda,
-                           "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
-
-                # eval on validation set periodically
-                if batch_idx % args.eval_freq == 0:
-                    # evaluate on val set
-                    val_loss, val_acc, _, _, _, _, val_lamda = test_loop(model, val_loader, max_test_batches)
-                    is_best = val_loss < best_loss
-                    if is_best:
-                        best_loss = val_loss
-                        best_batch_idx = batch_idx
-                    wandb.log({"val/acc": val_acc,
-                                "val/loss": val_loss,
-                                "val/avg_lamda": val_lamda}, step=batch_idx)
-                    # TODO save example outputs?
-                    # TODO F1/prec/recall etc.?
-                    # TODO wandb summary metrics? 
-
-                    # save checkpoint
-                    checkpoint_dict = {
-                        "batch_idx": batch_idx,
-                        "state_dict": model.state_dict(),
-                        "best_loss": best_loss,
-                        "optimizer": optimizer.state_dict(),
-                        "args": vars(args)
-                    }
-                    utils.save_checkpoint(checkpoint_dict, is_best)
-
-                    print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}, train/avg_lamda: {train_lamda}"
-                          f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {val_lamda}")
-
-                # break after max iters or early stopping
-                if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
-                    break
-        except KeyboardInterrupt:
-            pass
-        # TODO keyboard interrupt doesn't seem to keep it going on colab
-    
     # test
     test_loss, test_acc, test_preds, test_true, test_idx, task_idx, avg_lamda = test_loop(
         model, test_loader, max_test_batches)
@@ -136,8 +78,72 @@ def main(args):
         "preds": test_preds,
         "targets": test_true})
     df.to_csv(path_or_buf=f"{results_path}/run_{wandb.run.name}.csv")
-
     wandb.finish()
+
+
+def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
+    """Run training loop
+    """
+    # get best val loss
+    best_loss, best_acc, _, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
+    print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
+    best_batch_idx = 0
+    
+    # use try, except to be able to stop partway through training
+    try:
+        # Training loop
+        # do in epochs with a max_num_batches instead?
+        for batch_idx, batch in enumerate(train_loader):
+            # TODO make this into an evaluate function
+            train_loss, train_acc, train_lamda = model.evaluate(
+                batch=batch,
+                optimizer=optimizer,
+                num_ways=args.num_ways,
+                device=args.device,
+                task="train")
+
+            # log
+            # TODO track lr etc as well
+            wandb.log({"train/acc": train_acc,
+                        "train/loss": train_loss,
+                        "train/avg_lamda": train_lamda,
+                        "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
+
+            # eval on validation set periodically
+            if batch_idx % args.eval_freq == 0:
+                # evaluate on val set
+                val_loss, val_acc, _, _, _, _, val_lamda = test_loop(model, val_loader, max_test_batches)
+                is_best = val_loss < best_loss
+                if is_best:
+                    best_loss = val_loss
+                    best_batch_idx = batch_idx
+                wandb.log({"val/acc": val_acc,
+                            "val/loss": val_loss,
+                            "val/avg_lamda": val_lamda}, step=batch_idx)
+                # TODO save example outputs?
+                # TODO F1/prec/recall etc.?
+                # TODO wandb summary metrics? 
+
+                # save checkpoint
+                checkpoint_dict = {
+                    "batch_idx": batch_idx,
+                    "state_dict": model.state_dict(),
+                    "best_loss": best_loss,
+                    "optimizer": optimizer.state_dict(),
+                    "args": vars(args)
+                }
+                utils.save_checkpoint(checkpoint_dict, is_best)
+
+                print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}, train/avg_lamda: {train_lamda}"
+                        f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {val_lamda}")
+
+            # break after max iters or early stopping
+            if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
+                break
+    except KeyboardInterrupt:
+        pass
+
+    return model
 
 
 def init_model(args, dictionary):
@@ -199,12 +205,13 @@ def test_loop(model, test_dataloader, max_num_batches):
     avg_lamda = utils.AverageMeter()
     
     for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches, position=0, leave=True)): 
-        test_loss, test_acc, preds, trues, idx, lamda = model.evaluate(
-            batch=batch,
-            optimizer=None,
-            num_ways=args.num_ways,
-            device=args.device,
-            task="test")
+        with torch.no_grad():
+            test_loss, test_acc, preds, trues, idx, lamda = model.evaluate(
+                batch=batch,
+                optimizer=None,
+                num_ways=args.num_ways,
+                device=args.device,
+                task="test")
 
         avg_test_acc.update(test_acc)
         avg_test_loss.update(test_loss)
