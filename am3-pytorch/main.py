@@ -89,7 +89,9 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
     
-    # use try, except to be able to stop partway through training
+    # use try, except to be able to stop partway through training 
+    # TODO this doesn't work with wandb for some reason. Might be good? no eval on test set. 
+    # can always call --evaluate later with saved checkpoint
     try:
         # Training loop
         # do in epochs with a max_num_batches instead?
