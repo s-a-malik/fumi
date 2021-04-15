@@ -27,6 +27,55 @@ def get_preds(prototypes, embeddings, targets):
     return preds.detach().cpu().numpy(), torch.mean(preds.eq(targets).float())
 
 
+def get_prototypes(im_embeddings, text_embeddings, lamdas, targets, num_classes):
+    """Compute the prototypes (the mean vector of the embedded training/support 
+    points belonging to its class) for each classes in the task.
+    Params:
+    - im_embeddings (torch.FloatTensor): image embeddings of the support points
+    (b, N*K, emb_dim).
+    - text_embeddings (torch.FloatTensor): text embeddings of the support points
+    (b, N*K, emb_dim).
+    - lamda (torch.FloatTensor): weighting of text for the prototype (b, N*K, 1).
+    targets (torch.LongTensor): targets of the support points (b, N*K).
+    num_classes (int): Number of classes in the task.
+    Returns:
+    - prototypes (torch.FloatTensor): prototypes for each class (b, N, emb_dim).
+    """
+    batch_size, embedding_size = im_embeddings.size(0), im_embeddings.size(-1)
+
+    # num_samples common across all computations
+    num_samples = get_num_samples(targets, num_classes, dtype=im_embeddings.dtype)
+    num_samples.unsqueeze_(-1)  # (b x N x 1)
+    num_samples = torch.max(num_samples, torch.ones_like(num_samples))      # prevents zero division error
+    indices = targets.unsqueeze(-1).expand_as(im_embeddings)                # (b x N*K x 512)
+
+    im_prototypes = im_embeddings.new_zeros((batch_size, num_classes, embedding_size))
+    im_prototypes.scatter_add_(1, indices, im_embeddings).div_(num_samples)   # compute mean embedding of each class
+
+    # should all be equal anyway (checked)
+    text_prototypes = text_embeddings.new_zeros((batch_size, num_classes, embedding_size))
+    text_prototypes.scatter_add_(1, indices, text_embeddings).div_(num_samples)
+
+    # should all be equal (checked)
+    lamdas_per_class = lamdas.new_zeros((batch_size, num_classes, 1))
+    lamdas_per_class.scatter_add_(1, targets.unsqueeze(-1), lamdas).div_(num_samples)
+
+    # convex combination
+    prototypes = lamdas_per_class * im_prototypes + (1-lamdas_per_class) * text_prototypes
+    return prototypes
+
+
+def get_num_samples(targets, num_classes, dtype=None):
+    """Returns a vector with the number of samples in each class.
+    """
+    batch_size = targets.size(0)
+    with torch.no_grad():
+        ones = torch.ones_like(targets, dtype=dtype)
+        num_samples = ones.new_zeros((batch_size, num_classes))
+        num_samples.scatter_add_(1, targets, ones)
+    return num_samples
+
+
 def prototypical_loss(prototypes, embeddings, targets, **kwargs):
     """Compute the loss (i.e. negative log-likelihood) for the prototypical 
     network, on the test/query points.

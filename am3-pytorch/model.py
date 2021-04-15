@@ -32,8 +32,8 @@ class AM3(nn.Module):
             # TODO image encoder if raw images
             self.image_encoder = nn.Linear(im_emb_dim, prototype_dim)
 
-        # TODO be able to use any hf bert model (requires correct tokenisation)
         if self.text_encoder_type == "BERT":
+            # TODO be able to use any hf bert model (requires correct tokenisation)
             self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
             self.text_emb_dim = self.text_encoder.config.hidden_size
         elif self.text_encoder_type == "precomputed":
@@ -86,7 +86,7 @@ class AM3(nn.Module):
             idx, text, attn_mask, im = inputs
         else:
             idx, text, im = inputs
-        
+
         # process
         im_embeddings = self.image_encoder(im)      # (b x N*K x 512)  
         if not im_only:
@@ -136,7 +136,7 @@ class AM3(nn.Module):
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
         # need to change the targets to in range 0-num_ways
-        prototypes = self.get_prototypes(
+        prototypes = utils.get_prototypes(
             train_im_embeddings,
             train_text_embeddings,
             train_lamda,
@@ -161,43 +161,6 @@ class AM3(nn.Module):
             return loss, acc, preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), avg_lamda.detach().cpu().numpy()
         else:
             return loss, acc, avg_lamda.detach().cpu().numpy()
-        
-    def get_prototypes(self, im_embeddings, text_embeddings, lamdas, targets, num_classes):
-        """Compute the prototypes (the mean vector of the embedded training/support 
-        points belonging to its class) for each classes in the task.
-        Params:
-        - im_embeddings (torch.FloatTensor): image embeddings of the support points
-        (b, N*K, emb_dim).
-        - text_embeddings (torch.FloatTensor): text embeddings of the support points
-        (b, N*K, emb_dim).
-        - lamda (torch.FloatTensor): weighting of text for the prototype (b, N*K, 1).
-        targets (torch.LongTensor): targets of the support points (b, N*K).
-        num_classes (int): Number of classes in the task.
-        Returns:
-        - prototypes (torch.FloatTensor): prototypes for each class (b, N, emb_dim).
-        """
-        batch_size, embedding_size = im_embeddings.size(0), im_embeddings.size(-1)
-
-        # num_samples common across all computations
-        num_samples = get_num_samples(targets, num_classes, dtype=im_embeddings.dtype)
-        num_samples.unsqueeze_(-1)  # (b x N x 1)
-        num_samples = torch.max(num_samples, torch.ones_like(num_samples))      # prevents zero division error
-        indices = targets.unsqueeze(-1).expand_as(im_embeddings)                # (b x N*K x 512)
-
-        im_prototypes = im_embeddings.new_zeros((batch_size, num_classes, embedding_size))
-        im_prototypes.scatter_add_(1, indices, im_embeddings).div_(num_samples)   # compute mean embedding of each class
-
-        # should all be equal anyway (checked)
-        text_prototypes = text_embeddings.new_zeros((batch_size, num_classes, embedding_size))
-        text_prototypes.scatter_add_(1, indices, text_embeddings).div_(num_samples)
-
-        # should all be equal (checked)
-        lamdas_per_class = lamdas.new_zeros((batch_size, num_classes, 1))
-        lamdas_per_class.scatter_add_(1, targets.unsqueeze(-1), lamdas).div_(num_samples)
-
-        # convex combination
-        prototypes = lamdas_per_class * im_prototypes + (1-lamdas_per_class) * text_prototypes
-        return prototypes
 
 
 class WordEmbedding(nn.Module):
@@ -258,23 +221,6 @@ class WordEmbedding(nn.Module):
         else:
             raise NameError(f"{self.pooling_strat} pooling strat not defined")
 
-    def get_word_matrix(self):
-        """Loads pretrained word embeddings into a nn.Embedding layer
-        Returns:
-        - embedding_layer ()
-        """
-
-
-def get_num_samples(targets, num_classes, dtype=None):
-    """Returns a vector with the number of samples in each class.
-    """
-    batch_size = targets.size(0)
-    with torch.no_grad():
-        ones = torch.ones_like(targets, dtype=dtype)
-        num_samples = ones.new_zeros((batch_size, num_classes))
-        num_samples.scatter_add_(1, targets, ones)
-    return num_samples
-
 
 if __name__ == "__main__":
 
@@ -290,7 +236,7 @@ if __name__ == "__main__":
     inputs = (idx, text, im)
     im_embed, text_embed, lamdas = model(inputs)
     print("output shapes (im, text, lamda)", im_embed.shape, text_embed.shape, lamdas.shape)
-    prototypes = model.get_prototypes(im_embed, text_embed, lamdas, targets, N)
+    prototypes = utils.get_prototypes(im_embed, text_embed, lamdas, targets, N)
     print("prototypes", prototypes.shape)
     loss = utils.prototypical_loss(prototypes, im_embed, targets)   # test on train set
     print("loss", loss)
