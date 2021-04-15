@@ -154,6 +154,7 @@ class Zanim(CombinationMetaDataset):
     def dictionary(self):
         return self.dataset.dictionary.token2id
 
+
 class ZanimClassDataset(ClassDataset):
 
     def __init__(self, root: str, json_path: str, meta_train=False, meta_val=False, meta_test=False, tokenisation_mode=TokenisationMode.BERT, full_description=True, remove_stop_words=True):
@@ -255,6 +256,7 @@ class ZanimClassDataset(ClassDataset):
         indices = self.category_id_map[self.categories[index%self.num_classes]]
         mask = self.mask[index] if self.tokenisation_mode == TokenisationMode.BERT else None
         return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index%self.num_classes, attention_mask=mask, target_transform=self.get_target_transform(index))
+
 
 class ZanimDataset(Dataset):
 
