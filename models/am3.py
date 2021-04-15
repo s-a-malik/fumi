@@ -2,13 +2,13 @@
 """
 
 import wandb
-import tqdm
 import torch
 import torch.nn as nn
 import numpy as np
 
 import gensim.downloader as api
 from transformers import BertModel
+from tqdm.autonotebook import tqdm
 
 import utils
 
