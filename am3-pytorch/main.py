@@ -28,6 +28,7 @@ def main(args):
     results_path = f"{args.log_dir}/results"
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
+    os.environ["GENSIM_DATA_DIR"] = f"{args.log_dir}/word_embeddings"
     job_type = "eval" if args.evaluate else "train"
     run = wandb.init(entity="multimodal-image-cls",
                      project="am3",
