@@ -96,7 +96,6 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
         # Training loop
         # do in epochs with a max_num_batches instead?
         for batch_idx, batch in enumerate(train_loader):
-            # TODO make this into an evaluate function
             train_loss, train_acc, train_lamda = model.evaluate(
                 batch=batch,
                 optimizer=optimizer,
@@ -105,7 +104,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                 task="train")
 
             # log
-            # TODO track lr etc as well
+            # TODO track lr etc as well if using scheduler
             wandb.log({"train/acc": train_acc,
                         "train/loss": train_loss,
                         "train/avg_lamda": train_lamda,
@@ -148,46 +147,6 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     return model
 
 
-def init_model(args, dictionary):
-    """Initialise model
-    """
-    model = AM3(
-        im_encoder=args.im_encoder,
-        im_emb_dim=args.im_emb_dim,
-        text_encoder=args.text_encoder,
-        text_emb_dim=args.text_emb_dim, 
-        text_hid_dim=args.text_hid_dim,
-        prototype_dim=args.prototype_dim,
-        dropout=args.dropout,
-        fine_tune=args.fine_tune,
-        dictionary=dictionary,
-        pooling_strat=args.pooling_strat
-    )
-
-    wandb.watch(model, log="all")   # for tracking gradients etc.
-    model.to(args.device)
-    return model
-
-
-def init_optim(args, model):
-    """Initialise optimizer
-    """
-
-    if args.optim == "adam":
-        optimizer = torch.optim.Adam(params=model.parameters(),
-                                     lr=args.lr,
-                                     weight_decay=args.weight_decay)
-    elif args.optim == "SGD":
-        optimizer = torch.optim.SGD(params=model.parameters(),
-                                    lr=args.lr,
-                                    weight_decay=args.weight_decay,
-                                    momentum=args.momentum)
-    else:
-        raise NotImplementedError()
-
-    return optimizer
-
-
 def test_loop(model, test_dataloader, max_num_batches):
     """Evaluate model on val/test set.
     Test on 1000 randomly sampled tasks, each with 100 query samples (as in AM3)
@@ -228,6 +187,46 @@ def test_loop(model, test_dataloader, max_num_batches):
             break
                     
     return avg_test_loss.avg, avg_test_acc.avg, test_preds, test_trues, test_idx, task_idx, avg_lamda.avg
+
+
+def init_model(args, dictionary):
+    """Initialise model
+    """
+    model = AM3(
+        im_encoder=args.im_encoder,
+        im_emb_dim=args.im_emb_dim,
+        text_encoder=args.text_encoder,
+        text_emb_dim=args.text_emb_dim, 
+        text_hid_dim=args.text_hid_dim,
+        prototype_dim=args.prototype_dim,
+        dropout=args.dropout,
+        fine_tune=args.fine_tune,
+        dictionary=dictionary,
+        pooling_strat=args.pooling_strat
+    )
+
+    wandb.watch(model, log="all")   # for tracking gradients etc.
+    model.to(args.device)
+    return model
+
+
+def init_optim(args, model):
+    """Initialise optimizer
+    """
+
+    if args.optim == "adam":
+        optimizer = torch.optim.Adam(params=model.parameters(),
+                                     lr=args.lr,
+                                     weight_decay=args.weight_decay)
+    elif args.optim == "SGD":
+        optimizer = torch.optim.SGD(params=model.parameters(),
+                                    lr=args.lr,
+                                    weight_decay=args.weight_decay,
+                                    momentum=args.momentum)
+    else:
+        raise NotImplementedError()
+
+    return optimizer
 
 
 def parse_args():
