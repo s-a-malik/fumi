@@ -26,10 +26,10 @@ class AM3(nn.Module):
 
         if im_encoder == "precomputed":
             # if using precomputed embeddings
-            self.image_encoder = nn.Linear(im_emb_dim, prototype_dim)
+            self.image_encoder = nn.Linear(self.im_emb_dim, self.prototype_dim)
         elif im_encoder == "resnet":
             # TODO image encoder if raw images
-            self.image_encoder = nn.Linear(im_emb_dim, prototype_dim)
+            self.image_encoder = nn.Linear(self.im_emb_dim, self.prototype_dim)
 
         if self.text_encoder_type == "BERT":
             # TODO be able to use any hf bert model (requires correct tokenisation)
@@ -43,7 +43,7 @@ class AM3(nn.Module):
             self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "RNN":
             # TODO RNN implementation
-            self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)   
+            self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
         else:
             raise NameError(f"{text_encoder} not allowed as text encoder")
 
@@ -202,9 +202,9 @@ class WordEmbedding(nn.Module):
 
     def forward(self, x):
         """Params:
-        x (torch.LongTensor): tokenised sequence (b x N*K x max_seq_len)
+        - x (torch.LongTensor): tokenised sequence (b x N*K x max_seq_len)
         Returns:
-        text_embedding (torch.FloatTensor): embedded sequence (b x N*K x emb_dim)
+        - text_embedding (torch.FloatTensor): embedded sequence (b x N*K x emb_dim)
         """
         # embed
         text_embedding = self.embed(x)      # (b x N*K x max_seq_len x emb_dim)

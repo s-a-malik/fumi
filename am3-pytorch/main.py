@@ -83,6 +83,8 @@ def main(args):
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
     """Run training loop
+    Returns:
+    - model (nn.Module): trained model
     """
     # get best val loss
     best_loss, best_acc, _, _, _, _, _ = test_loop(model, val_loader, max_test_batches)
