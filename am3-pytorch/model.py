@@ -216,7 +216,7 @@ class WordEmbedding(nn.Module):
             return torch.sum(text_embedding, dim=-1).div_(seq_lens)
         elif self.pooling_strat == "max":
             # TODO check how to max pool
-            return torch.max(text_embedding, dim=1)
+            return torch.max(text_embedding, dim=2)[0]
         else:
             raise NameError(f"{self.pooling_strat} pooling strat not defined")
 
