@@ -183,7 +183,8 @@ class WordEmbedding(nn.Module):
 
         OOV = []
         # randomly initialise OOV tokens between -1 and 1
-        weights = 2*np.random.rand((len(self.dictionary), self.embedding_dim)) - 1
+        weights = 2*np.random.rand(len(self.dictionary), self.embedding_dim) - 1
+        print(weights.shape, weights)
         for word, token in self.dictionary.items():
             if word == "<PAD>":
                 self.padding_token = token
