@@ -135,7 +135,7 @@ class AM3(nn.Module):
         test_targets = test_targets.to(device)
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
-        # need to change the targets to in range 0-num_ways
+        # construct prototypes
         prototypes = utils.get_prototypes(
             train_im_embeddings,
             train_text_embeddings,
@@ -173,7 +173,7 @@ class WordEmbedding(nn.Module):
         self.text_encoder_type = text_encoder_type
 
         # get pretrained word embeddings
-        print("dictionary size: ", len(self.dictionary))
+        print("dictionary size: ", len(self.dictionary), "sample", )
         print("loading pretrained word vectors...")
         if text_encoder_type == "glove":
             word_model = api.load("glove-wiki-gigaword-300")
@@ -193,7 +193,7 @@ class WordEmbedding(nn.Module):
             else:
                 OOV.append(word)
         # print number out of vocab
-        print(f"done. Embedding dim: {self.embedding_dim}."
+        print(f"done. Embedding dim: {self.embedding_dim}. "
               f"Number of OOV tokens: {len(OOV)}, padding token: {self.padding_token}")
         
         # use to make embedding layer
@@ -209,13 +209,9 @@ class WordEmbedding(nn.Module):
         text_embedding = self.embed(x)      # (b x N*K x max_seq_len x emb_dim)
         # pool
         if self.pooling_strat == "mean":
-            padding_mask = torch.where(x == self.padding_token, 1, 0)  # (b x N*K x max_seq_len)
-            print(padding_mask.shape, padding_mask)
+            padding_mask = torch.where(x != self.padding_token, 1, 0)  # (b x N*K x max_seq_len)
             seq_lens = torch.sum(padding_mask, dim=-1).unsqueeze(-1)        # (b x N*K x 1)
-            print(seq_lens.shape, seq_lens)
-            print(torch.sum(text_embedding, dim=-1))
-            print(torch.sum(text_embedding, dim=-1).div_(seq_lens).shape)
-            return torch.sum(text_embedding, dim=-1).div_(seq_lens)
+            return torch.sum(text_embedding, dim=2).div_(seq_lens)
         elif self.pooling_strat == "max":
             # TODO check how to max pool
             return torch.max(text_embedding, dim=2)[0]
