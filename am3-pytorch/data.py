@@ -147,7 +147,6 @@ class Zanim(CombinationMetaDataset):
         torch.manual_seed(0)
         dataset = ZanimClassDataset(root, json_path, meta_train=meta_train, meta_val=meta_val, meta_test=meta_test,
                                     tokenisation_mode=tokenisation_mode, full_description=full_description, remove_stop_words=remove_stop_words)
-        super().__init__(dataset, num_classes_per_task)
         super().__init__(self.dataset, num_classes_per_task, target_transform=target_transform)
 
     @property

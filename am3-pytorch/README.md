@@ -36,6 +36,7 @@ python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
 - [ ] Accuracy as a function of class description
 - [ ] Analysis of worst/best classes (labels and descriptions)
 - [ ] No text (just image prototype, force lamda = 1 is probs easiest way to do this)
+- [ ] Zero shot - just text (lambda = 0 is probs easiest way to do this) 
 - [ ] vary N, K etc.
 - [ ] robustness testing of hypers and results? Maybe it is more stable on average if descriptions are used
 - [ ] compare runtimes (can do qualitatively?)

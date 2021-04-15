@@ -39,7 +39,6 @@ class AM3(nn.Module):
             self.text_encoder = nn.Identity()
         elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
             # load pretrained word embeddings as weights
-            # print("init text encoder")
             self.text_encoder = WordEmbedding(self.text_encoder_type, self.pooling_strat, self.dictionary)
             self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "RNN":
@@ -48,9 +47,11 @@ class AM3(nn.Module):
         else:
             raise NameError(f"{text_encoder} not allowed as text encoder")
 
-        if not fine_tune:
+        # fine tune set up
+        if not self.fine_tune:
             for param in self.text_encoder.parameters():
                 param.requires_grad = False
+        
         # text to prototype neural net
         self.g = nn.Sequential(
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
