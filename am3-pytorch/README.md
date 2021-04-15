@@ -30,14 +30,14 @@ python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
 - [ ] AM3 baseline - GloVE class label embeddings. (they use resnet like us as well but 512 size not 2048)
 - [ ] BERT class label embeddings
 - [ ] BERT class description embeddings (improves?)
-- [ ] Try other word embedding based models. RNN, word2vec (different pooling methods - average used in AM3)
+- [ ] Try other word embedding based models. RNN, word2vec (different pooling methods - mean used in AM3)
 - [ ] label + description (just concat label and description strings and then tokenise)
 - [ ] Plots of lamdba with different number of shots/ways. Get particular example classes with high/low lambda
 - [ ] Accuracy as a function of class description
 - [ ] Analysis of worst/best classes (labels and descriptions)
 - [ ] No text (just image prototype, force lamda = 1 is probs easiest way to do this)
 - [ ] Zero shot - just text (lambda = 0 is probs easiest way to do this) 
-- [ ] vary N, K etc.
+- [ ] vary N, K and see difference in lambda. (lambda should increase with K)
 - [ ] robustness testing of hypers and results? Maybe it is more stable on average if descriptions are used
 - [ ] compare runtimes (can do qualitatively?)
 
@@ -45,9 +45,11 @@ python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
 
 - [x] Implement the model and test end-to-end
 - [x] Logs and model saving on wandb.
-- [ ] log further metrics e.g. f1, prec, rec etc. (and example batches?)
+- [ ] log further metrics e.g. f1, prec, rec etc. 
+- [ ] log example batches/have an interactive eval script. Need for the colab for submission.
 - [ ] add support for multiple training runs (or can do manually)
 - [ ] add training stuff to improve performance (lr decay, augmentation etc.)
+- [ ] implement TADAM version? 
 - [ ] Choose hyperparameters with val dataset loss (do a sweep?). Need to tune for each experiment...
 - [ ] Reproduce results on their datasets - need to get class labels from CUB etc. 
 - [ ] Run experiments (on ours and their datasets)
