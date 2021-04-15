@@ -66,7 +66,7 @@ def main(args):
         raise NotImplementedError()
     else:
         test_loss, test_acc, test_preds, test_true, test_idx, task_idx, avg_lamda = am3.test_loop(
-            model, test_loader, max_test_batches)
+            args, model, test_loader, max_test_batches)
         print(f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}, test avg lamda: {avg_lamda}")
         # TODO more metrics - F1, precision, recall etc.
 

@@ -1,6 +1,8 @@
 """Model classes for AM3 in Pytorch.
 """
 
+import wandb
+import tqdm
 import torch
 import torch.nn as nn
 import numpy as np
@@ -227,7 +229,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     """
     # get best val loss
     best_loss, best_acc, _, _, _, _, _ = test_loop(
-        model, val_loader, max_test_batches)
+        args, model, val_loader, max_test_batches)
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
 
@@ -256,7 +258,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
             if batch_idx % args.eval_freq == 0:
                 # evaluate on val set
                 val_loss, val_acc, _, _, _, _, val_lamda = test_loop(
-                    model, val_loader, max_test_batches)
+                    args, model, val_loader, max_test_batches)
                 is_best = val_loss < best_loss
                 if is_best:
                     best_loss = val_loss
@@ -290,7 +292,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     return model
 
 
-def test_loop(model, test_dataloader, max_num_batches):
+def test_loop(args, model, test_dataloader, max_num_batches):
     """Evaluate model on val/test set.
     Test on 1000 randomly sampled tasks, each with 100 query samples (as in AM3)
     Returns:
