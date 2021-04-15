@@ -159,9 +159,9 @@ class AM3(nn.Module):
             # TODO return the query/support images and text per task and lamdas to compare 
             # returning just the query set targets is not that helpful.
             test_idx = test_inputs[0]
-            return loss, acc, preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), avg_lamda.detach().cpu().numpy()
+            return loss.detach().cpu().numpy(), acc, preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), avg_lamda.detach().cpu().numpy()
         else:
-            return loss, acc, avg_lamda.detach().cpu().numpy()
+            return loss.detach().cpu().numpy(), acc, avg_lamda.detach().cpu().numpy()
 
 
 class WordEmbedding(nn.Module):
@@ -174,7 +174,7 @@ class WordEmbedding(nn.Module):
         self.text_encoder_type = text_encoder_type
 
         # get pretrained word embeddings
-        print("dictionary size: ", len(self.dictionary), "sample", )
+        print("dictionary size: ", len(self.dictionary))
         print("loading pretrained word vectors...")
         if text_encoder_type == "glove":
             word_model = api.load("glove-wiki-gigaword-300")

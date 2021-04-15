@@ -28,7 +28,7 @@ def main(args):
     results_path = f"{args.log_dir}/results"
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
-    os.environ["GENSIM_DATA_DIR"] = f"{args.log_dir}/word_embeddings"
+    os.environ["GENSIM_DATA_DIR"] = f"{args.log_dir}/word_embeddings"   # TODO changing the dir doesn't seem to work on colab
     job_type = "eval" if args.evaluate else "train"
     run = wandb.init(entity="multimodal-image-cls",
                      project="am3",
@@ -39,7 +39,7 @@ def main(args):
 
     # load datasets
     train_loader, val_loader, test_loader, dictionary = get_dataset(args)
-    # TODO fix this to give exactly 1000. Change in dataloader probs.
+    # TODO fix this to give exactly 1000 episodes. Change in test dataloader probs.
     max_test_batches = int(args.num_ep_test/args.batch_size)
 
     # initialise model and optim
@@ -67,7 +67,6 @@ def main(args):
         try:
             # Training loop
             # do in epochs with a max_num_batches instead?
-            # for batch_idx, batch in enumerate(tqdm(train_loader, total=args.epochs)):
             for batch_idx, batch in enumerate(train_loader):
                 # TODO make this into an evaluate function
                 train_loss, train_acc, train_lamda = model.evaluate(
@@ -117,6 +116,7 @@ def main(args):
                     break
         except KeyboardInterrupt:
             pass
+        # TODO keyboard interrupt doesn't seem to keep it going on colab
     
     # test
     test_loss, test_acc, test_preds, test_true, test_idx, task_idx, avg_lamda = test_loop(
