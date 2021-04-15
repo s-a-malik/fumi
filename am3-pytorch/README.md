@@ -38,6 +38,7 @@ python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
 - [ ] No text (just image prototype, force lamda = 1 is probs easiest way to do this)
 - [ ] vary N, K etc.
 - [ ] robustness testing of hypers and results? Maybe it is more stable on average if descriptions are used
+- [ ] compare runtimes (can do qualitatively?)
 
 ## TODO
 
@@ -48,7 +49,7 @@ python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
 - [ ] add training stuff to improve performance (lr decay, augmentation etc.)
 - [ ] Choose hyperparameters with val dataset loss (do a sweep?). Need to tune for each experiment...
 - [ ] Reproduce results on their datasets - need to get class labels from CUB etc. 
-- [ ] Run experiments
+- [ ] Run experiments (on ours and their datasets)
 
 ## Acknowledgements
 

@@ -39,6 +39,7 @@ class AM3(nn.Module):
             self.text_encoder = nn.Identity()
         elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
             # load pretrained word embeddings as weights
+            print("init text encoder")
             self.text_encoder = WordEmbedding(self.text_encoder_type, self.pooling_strat, self.dictionary)
             self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "RNN":
@@ -172,6 +173,7 @@ class WordEmbedding(nn.Module):
         self.text_encoder_type = text_encoder_type
 
         # get pretrained word embeddings
+        print("dictionary: ", self.dictionary)
         print("loading pretrained word vectors...")
         if text_encoder_type == "glove":
             word_model = api.load("glove-wiki-gigaword-300")
