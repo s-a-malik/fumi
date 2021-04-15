@@ -27,10 +27,14 @@ python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
 
 ## Experiments to try
 
-- [ ] AM3 baseline - GloVE class label embeddings. (they use resnet like us as well)
+- [ ] AM3 baseline - GloVE class label embeddings. (they use resnet like us as well but 512 size not 2048)
 - [ ] BERT class label embeddings
 - [ ] BERT class description embeddings (improves?)
+- [ ] Try other word embedding based models. RNN, word2vec (different pooling methods - average used in AM3)
+- [ ] label + description (just concat label and description strings and then tokenise)
 - [ ] Plots of lamdba with different number of shots/ways. Get particular example classes with high/low lambda
+- [ ] Accuracy as a function of class description
+- [ ] Analysis of worst/best classes (labels and descriptions)
 - [ ] No text (just image prototype, force lamda = 1 is probs easiest way to do this)
 - [ ] vary N, K etc.
 - [ ] robustness testing of hypers and results? Maybe it is more stable on average if descriptions are used

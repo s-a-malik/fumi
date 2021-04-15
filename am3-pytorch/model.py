@@ -4,22 +4,24 @@
 import torch
 import torch.nn as nn
 
+import gensim.downloader as api
 from transformers import BertModel
 
 import utils
 
 
 class AM3(nn.Module):
-    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False, dictionary=None):
+    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim=300, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False, dictionary=None, pooling_strat="mean"):
         super(AM3, self).__init__()
         self.im_emb_dim = im_emb_dim            # image embedding size
         self.text_encoder_type = text_encoder
-        self.text_emb_dim = text_emb_dim
+        self.text_emb_dim = text_emb_dim        # only applicable if precomputed
         self.text_hid_dim = text_hid_dim        # AM3 uses 300
         self.prototype_dim = prototype_dim      # AM3 uses 512 (resnet)
         self.dropout = dropout                  # AM3 uses 0.7 or 0.9 depending on dataset
         self.fine_tune = fine_tune
         self.dictionary = dictionary            # for word embeddings
+        self.pooling_strat = pooling_strat
 
         if im_encoder == "precomputed":
             # if using precomputed embeddings
@@ -29,18 +31,24 @@ class AM3(nn.Module):
             self.image_encoder = nn.Linear(im_emb_dim, prototype_dim)
 
         # TODO be able to use any hf bert model (requires correct tokenisation)
-        if text_encoder == "BERT":
+        if self.text_encoder_type == "BERT":
             self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
             self.text_emb_dim = self.text_encoder.config.hidden_size
-            if not fine_tune:
-                for param in self.text_encoder.parameters():
-                    param.requires_grad = False
-        # TODO other embeddings, use dictionary to get embeddings loaded
-        elif text_encoder == "GloVe":
-            self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
-        elif text_encoder == "RNN":
-            self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)
+        elif self.text_encoder_type == "precomputed":
+            self.text_encoder = nn.Identity()
+        elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
+            # load pretrained word embeddings as weights
+            self.text_encoder = WordEmbedding(self.text_encoder_type, self.pooling_strat, self.dictionary)
+            self.text_emb_dim = self.text_encoder.embedding_dim
+        elif self.text_encoder_type == "RNN":
+            # TODO RNN implementation
+            self.text_encoder = nn.Linear(text_emb_dim, text_emb_dim)   
+        else:
+            raise NameError(f"{text_encoder} not allowed as text encoder")
 
+        if not fine_tune:
+            for param in self.text_encoder.parameters():
+                param.requires_grad = False
         # text to prototype neural net
         self.g = nn.Sequential(
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
@@ -188,6 +196,71 @@ class AM3(nn.Module):
         # convex combination
         prototypes = lamdas_per_class * im_prototypes + (1-lamdas_per_class) * text_prototypes
         return prototypes
+
+
+class WordEmbedding(nn.Module):
+    def __init__(self, text_encoder_type, pooling_strat, dictionary):
+        """Embeds tokenised sequence into a fixed length word embedding
+        """
+        super(WordEmbedding, self).__init__()
+        self.pooling_strat = pooling_strat
+        self.dictionary = dictionary
+        self.text_encoder_type = text_encoder_type
+
+        # get pretrained word embeddings
+        print("loading pretrained word vectors...")
+        if text_encoder_type == "glove":
+            word_model = api.load("glove-wiki-gigaword-300")
+        elif text_encoder_type == "w2v":
+            word_model = api.load("word2vec-google-news-300")
+        self.embedding_dim = word_model.vector_size
+
+        OOV = []
+        # randomly initialise OOV tokens between -1 and 1
+        weights = 2*np.random.rand((len(self.dictionary), self.embedding_dim)) - 1
+        for word, token in self.dictionary.items():
+            if word == "<PAD>":
+                self.padding_token = token
+                weights[token, :] = np.zeros(self.embedding_dim) 
+            elif word in word_model.vocab:
+                weights[token, :] = word_model[word]
+            else:
+                OOV.append(word)
+        # print number out of vocab
+        print(f"done. Embedding dim: {self.embedding_dim}."
+              f"Number of OOV tokens: {len(OOV)}, padding token: {self.padding_token}")
+        
+        # use to make embedding layer
+        self.embed = nn.Embedding.from_pretrained(torch.FloatTensor(weights))
+
+    def forward(self, x):
+        """Params:
+        x (torch.LongTensor): tokenised sequence (b x N*K x max_seq_len)
+        Returns:
+        text_embedding (torch.FloatTensor): embedded sequence (b x N*K x emb_dim)
+        """
+        # embed
+        text_embedding = self.embed(x)      # (b x N*K x max_seq_len x emb_dim)
+        # pool
+        if self.pooling_strat == "mean":
+            padding_mask = torch.where(x == self.padding_token, 1, 0)  # (b x N*K x max_seq_len)
+            print(padding_mask.shape, padding_mask)
+            seq_lens = torch.sum(padding_mask, dim=-1).unsqueeze(-1)        # (b x N*K x 1)
+            print(seq_lens.shape, seq_lens)
+            print(torch.sum(text_embedding, dim=-1))
+            print(torch.sum(text_embedding, dim=-1).div_(seq_lens).shape)
+            return torch.sum(text_embedding, dim=-1).div_(seq_lens)
+        elif self.pooling_strat == "max":
+            # TODO check how to max pool
+            return torch.max(text_embedding, dim=1)
+        else:
+            raise NameError(f"{self.pooling_strat} pooling strat not defined")
+
+    def get_word_matrix(self):
+        """Loads pretrained word embeddings into a nn.Embedding layer
+        Returns:
+        - embedding_layer ()
+        """
 
 
 def get_num_samples(targets, num_classes, dtype=None):

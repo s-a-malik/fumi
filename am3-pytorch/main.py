@@ -151,7 +151,8 @@ def init_model(args, dictionary):
         prototype_dim=args.prototype_dim,
         dropout=args.dropout,
         fine_tune=args.fine_tune,
-        dictionary=dictionary
+        dictionary=dictionary,
+        pooling_strat=args.pooling_strat
     )
 
     wandb.watch(model, log="all")   # for tracking gradients etc.
@@ -310,7 +311,11 @@ def parse_args():
     parser.add_argument("--text_encoder",
                         type=str,
                         default="BERT",
-                        help="Type of text embedding (glove, BERT)")
+                        help="Type of text embedding (glove, w2v, RNN, BERT)")
+    parser.add_argument("--pooling_strat",
+                        type=str,
+                        default="mean",
+                        help="Pooling strategy if using word embeddings (mean, max)")
     parser.add_argument("--fine_tune",
                         action="store_true",
                         help="whether to fine tune text encoder")
