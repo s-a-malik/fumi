@@ -63,8 +63,7 @@ def main(args):
 
     # test
     if args.model == "maml":
-        test_loss, test_acc = am3.test_loop(
-            args, model, test_loader, max_test_batches)
+        test_loss, test_acc = maml.test_loop(args, model, test_loader, max_test_batches)
         print(
             f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}")
 
