@@ -143,6 +143,11 @@ def parse_args():
                         type=str,
                         default="./data",
                         help="Directory to use for data")
+    parser.add_argument("--json_path",
+                        type=str,
+                        default="train.json",
+                        help="Location of the json file containing dataset annotations"    
+    )
     parser.add_argument("--checkpoint",
                         type=str,
                         default=None,

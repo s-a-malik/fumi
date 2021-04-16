@@ -21,6 +21,7 @@ from torchmeta.transforms import Categorical, ClassSplitter
 from torchmeta.utils.data import (BatchMetaDataLoader, ClassDataset,
                                   CombinationMetaDataset, Dataset)
 from transformers import BertTokenizer, BertModel
+from torch.data.utils import DataLoader
 
 
 def get_dataset(args):
@@ -33,6 +34,7 @@ def get_dataset(args):
     """
     dataset = args.dataset
     data_dir = args.data_dir
+    json_path = args.json_path
     num_way = args.num_ways
     num_shots = args.num_shots
     num_shots_test = args.num_shots_test
@@ -45,7 +47,11 @@ def get_dataset(args):
             data_dir, num_way, num_shots, num_shots_test)
     elif dataset == "zanim":
         train, val, test, dictionary = get_zanim(
-            data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
+            data_dir, json_path, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
+    elif dataset == "supervised-zanim":
+        train, val, test, dictionary = get_supervised_zanim(
+            data_dir, json_path, text_encoder, text_type, remove_stop_words, args.device)
+        return tuple(DataLoader(d, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True) for d in [train, val, test]), dictionary
     else:
         raise NotImplementedError()
 
@@ -65,44 +71,50 @@ def get_dataset(args):
     return train_loader, val_loader, test_loader, dictionary
 
 
-def get_zanim(data_dir: str, num_way: int, num_shots: int, num_shots_test: int, text_encoder: str, text_type: str, remove_stop_words: bool):
-    """loads up our data
-    """
-    if text_encoder == "BERT":
-        token_mode = TokenisationMode.BERT
+def _convert_zanim_arguments(text_encoder: str, text_type):
+    token_mode = TokenisationMode.BERT if text_encoder == "BERT" else TokenisationMode.STANDARD
+    full_description = False
+    if text_type in ["description", "label"]:
+        full_description = text_type == "description"
     else:
-        token_mode = TokenisationMode.STANDARD
+        raise NameError(f"text type {text_type} not allowed")
 
-    if text_type == "description":
-        full_description = True
-    elif text_type == "label":
-        full_description = False
-    else:
-        NameError(f"text type {text_type} not allowed")
+    return (token_mode, full_description)
 
-    train = Zanim(root=data_dir, num_classes_per_task=num_way, meta_train=True, tokenisation_mode=token_mode,
+
+def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str, text_type: str, remove_stop_words: bool, device: str):
+    splits = []
+    token_mode, full_description = _convert_zanim_arguments(
+        text_encoder, text_type)
+    for (train, val, test) in [(True, False, False), (False, True, False), (False, False, True)]:
+        splits.append(SupervisedZanim(root=data_dir, json_path=json_path, train=train, val=val, test=test,
+                                      full_description=full_description, remove_stop_words=remove_stop_words, device=device))
+    return tuple(splits), splits[0].dictionary
+
+
+def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int, num_shots_test: int, text_encoder: str, text_type: str, remove_stop_words: bool):
+
+    token_mode, full_description = _convert_zanim_arguments(
+        text_encoder, text_type)
+    train = Zanim(root=data_dir, json_path=json_path, num_classes_per_task=num_way, meta_train=True, tokenisation_mode=token_mode,
                   full_description=full_description, remove_stop_words=remove_stop_words)
     train_split = ClassSplitter(
         train, shuffle=True, num_test_per_class=num_shots_test, num_train_per_class=num_shots)
     train_split.seed(0)
 
-    val = Zanim(root=data_dir, num_classes_per_task=num_way, meta_val=True, tokenisation_mode=token_mode,
+    val = Zanim(root=data_dir, json_path=json_path, num_classes_per_task=num_way, meta_val=True, tokenisation_mode=token_mode,
                 full_description=full_description, remove_stop_words=remove_stop_words)
     val_split = ClassSplitter(val, shuffle=True, num_test_per_class=int(
         100/num_shots), num_train_per_class=num_shots)
     val_split.seed(0)
 
-    test = Zanim(root=data_dir, num_classes_per_task=num_way, meta_test=True, tokenisation_mode=token_mode,
+    test = Zanim(root=data_dir, json_path=json_path, num_classes_per_task=num_way, meta_test=True, tokenisation_mode=token_mode,
                  full_description=full_description, remove_stop_words=remove_stop_words)
     test_split = ClassSplitter(test, shuffle=True, num_test_per_class=int(
         100/num_shots), num_train_per_class=num_shots)
     test_split.seed(0)
 
-    if text_encoder != "BERT":
-        # all the same dictionary anyway
-        dictionary = train.dictionary
-    else:
-        dictionary = {}
+    dictionary = {} if text_encoder == "BERT" else train.dictionary
 
     return train_split, val_split, test_split, dictionary
 
@@ -111,10 +123,10 @@ def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
     """Need to fix to get text as well
     """
     train = datasets.cub(data_dir, ways=num_way, shots=num_shots, test_shots=num_shots_test,
-                        meta_split="train", download=True)
+                         meta_split="train", download=True)
 
     val = datasets.cub(data_dir, ways=num_way, shots=num_shots, test_shots=int(100/num_shots),
-                        meta_split="val", download=True)
+                       meta_split="val", download=True)
 
     test = datasets.CUB(data_dir, ways=num_way, shots=num_shots, test_shots=int(100/num_shots), meta_split="test",
                         download=True)
@@ -126,31 +138,35 @@ def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
 
 class SupervisedZanim(torch.utils.data.Dataset):
 
-	def __init__(self, root, json_path="train.json", train=True, val=False, test=False, full_description=True, remove_stop_words=True, device=None, pooling=lambda x: torch.mean(x, axis=0)):
-		super().__init__()
-		if (train + val + test > 1) or (train + val + test == 0):
-			raise ValueError("Only a single value of train, val, test can be true")
-		self._zcd = ZanimClassDataset(root, json_path, meta_train=train, meta_val=val, meta_test=test,
-		                              tokenisation_mode=TokenisationMode.BERT, full_description=full_description, remove_stop_words=remove_stop_words)
-		self.model = BertModel.from_pretrained('bert-base-uncased')
-		self._bert_embeddings = torch.zeros(len(self), self.model.config.hidden_size)
-		if device is not None:
-			self.model.to(device)
+    def __init__(self, root, json_path="train.json", train=True, val=False, test=False, full_description=True, remove_stop_words=False, device=None, pooling=lambda x: torch.mean(x, axis=0)):
+        super().__init__()
+        if (train + val + test > 1) or (train + val + test == 0):
+            raise ValueError(
+                "Only a single value of train, val, test can be true")
+        self._zcd = ZanimClassDataset(root, json_path, meta_train=train, meta_val=val, meta_test=test,
+                                      tokenisation_mode=TokenisationMode.BERT, full_description=full_description, remove_stop_words=remove_stop_words)
+        self.model = BertModel.from_pretrained('bert-base-uncased')
+        self._bert_embeddings = torch.zeros(
+            len(self), self.model.config.hidden_size)
+        if device is not None:
+            self.model.to(device)
 
-		for index in range(len(self._zcd.categories)):
-			self._bert_embeddings[index] = pooling(self.model(
-			    input_ids=self._zcd.descriptions[index], attention_mask=self._zcd.mask[index]).last_hidden_state)
+        for index in range(len(self._zcd.categories)):
+            self._bert_embeddings[index] = pooling(self.model(
+                input_ids=self._zcd.descriptions[index], attention_mask=self._zcd.mask[index]).last_hidden_state)
 
-	def __len__(self):
-		return len(self._zcd.category_id)
+    def __len__(self):
+        return len(self._zcd.category_id)
 
-	def __getitem__(self, index):
-		category_id = self._zcd.category_id[index]
-		return self._zcd.image_embeddings[index], self._bert_embeddings[self._zcd.categories.index(category_id)], category_id
+    def __getitem__(self, index):
+        category_id = self._zcd.category_id[index]
+        return self._zcd.image_embeddings[index], self._bert_embeddings[self._zcd.categories.index(category_id)], category_id
+
 
 class TokenisationMode(Enum):
     BERT = 1
     STANDARD = 2
+
 
 class Zanim(CombinationMetaDataset):
 
@@ -165,7 +181,7 @@ class Zanim(CombinationMetaDataset):
         np.random.seed(0)
         torch.manual_seed(0)
         self.dataset = ZanimClassDataset(root, json_path, meta_train=meta_train, meta_val=meta_val, meta_test=meta_test,
-                                    tokenisation_mode=tokenisation_mode, full_description=full_description, remove_stop_words=remove_stop_words)
+                                         tokenisation_mode=tokenisation_mode, full_description=full_description, remove_stop_words=remove_stop_words)
         super().__init__(self.dataset, num_classes_per_task, target_transform=target_transform)
 
     @property
@@ -179,12 +195,14 @@ class ZanimClassDataset(ClassDataset):
         super().__init__(meta_train=meta_train, meta_val=meta_val, meta_test=meta_test)
         if not(root in json_path):
             json_path = os.path.join(root, json_path)
+
         self.root = root
         self.tokenisation_mode = tokenisation_mode
         print('Loading json annotations')
         with open(json_path) as annotations:
             annotations = json.load(annotations)
             self.annotations = annotations
+
         N = len(annotations['categories'])
         self.categories = np.arange(N)
         np.random.shuffle(self.categories)
@@ -195,13 +213,14 @@ class ZanimClassDataset(ClassDataset):
         elif meta_test:
             self.categories = self.categories[int(0.8*N):]
         else:
-            raise ValueError("One of meta_train, meta_val, meta_test must be true")
+            raise ValueError(
+                "One of meta_train, meta_val, meta_test must be true")
 
         self.image_ids = [i['id'] for i in annotations['images']
-            if annotations['annotations'][i['id']]['category_id'] in self.categories]
+                          if annotations['annotations'][i['id']]['category_id'] in self.categories]
         print("Building class id mapping")
         self.category_id = [annotations['annotations']
-            [id]['category_id'] for id in self.image_ids]
+                            [id]['category_id'] for id in self.image_ids]
         self.category_id_map = {}
         for id in range(len(self.image_ids)):
             cat_id = self.category_id[id]
@@ -211,19 +230,21 @@ class ZanimClassDataset(ClassDataset):
             else:
                 self.category_id_map[cat_id] = [image_id]
         for cat_id in self.category_id_map.keys():
-            self.category_id_map[cat_id] = np.array(self.category_id_map[cat_id])
+            self.category_id_map[cat_id] = np.array(
+                self.category_id_map[cat_id])
 
         if full_description:
             self.descriptions = [annotations['categories']
-                [i]['description'] for i in self.category_id]
+                                 [i]['description'] for i in self.category_id]
         else:
             self.descriptions = [annotations['categories'][i]['name']
-                for i in self.category_id]
+                                 for i in self.category_id]
 
         print("Copying image embeddings to local disk")
         if not os.path.exists('/content/image-embedding.hdf5'):
             self._copy_image_embeddings()
-        self.image_embeddings = h5py.File('image-embedding.hdf5', 'r')['images']
+        self.image_embeddings = h5py.File(
+            '/content/image-embedding.hdf5', 'r')['images']
         self._num_classes = len(self.categories)
 
         if remove_stop_words:
@@ -233,31 +254,36 @@ class ZanimClassDataset(ClassDataset):
                 [w for w in s.split() if not(w in stop_words)]) for s in self.descriptions]
 
         if tokenisation_mode == TokenisationMode.BERT:
-            tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
-            tokens = tokenizer(self.descriptions, return_token_type_ids=False, return_tensors="pt", padding=True, truncation=True)
+            tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+            tokens = tokenizer(self.descriptions, return_token_type_ids=False,
+                               return_tensors="pt", padding=True, truncation=True)
             self.descriptions = tokens['input_ids']
             self.mask = tokens['attention_mask']
         elif tokenisation_mode == TokenisationMode.STANDARD:
             # since using a generator can't take len(tokenize(d))
-            lengths = [sum([1 for w in tokenize(d)]) for d in self.descriptions]
+            lengths = [sum([1 for w in tokenize(d)])
+                       for d in self.descriptions]
             max_length = max(lengths)
             self.descriptions = [d.lower() + " " + " ".join(["<PAD>" for _ in range(
                 max_length-lengths[i])]) for (i, d) in enumerate(self.descriptions)]
-            full_set_of_descriptions = [annotations['categories'][i]['description' if full_description else 'name'] for i in range(N)]
-            self.dictionary = corpora.Dictionary([tokenize(d.lower()) for d in full_set_of_descriptions])
+            full_set_of_descriptions = [
+                annotations['categories'][i]['description' if full_description else 'name'] for i in range(N)]
+            self.dictionary = corpora.Dictionary(
+                [tokenize(d.lower()) for d in full_set_of_descriptions])
             self.dictionary.add_documents([tokenize("<PAD>")])
             self.descriptions = [[self.dictionary.token2id[z]
-                for z in tokenize(d)] for d in self.descriptions]
+                                  for z in tokenize(d)] for d in self.descriptions]
 
     def _copy_image_embeddings(self):
-        self._run_command(["cp", os.path.join(self.root, "image-embedding.hdf5"), "./"])
+        self._run_command(
+            ["cp", os.path.join(self.root, "image-embedding.hdf5"), "/content/"])
 
     def _run_command(self, command):
         pipes = subprocess.Popen(command, stderr=subprocess.PIPE)
         _, err = pipes.communicate()
         if pipes.returncode != 0:
-            raise Exception(f"Error in running custom command {' '.join(command)}: {err.strip()}")
-
+            raise Exception(
+                f"Error in running custom command {' '.join(command)}: {err.strip()}")
 
     def __len__(self):
         return self._num_classes
@@ -267,9 +293,10 @@ class ZanimClassDataset(ClassDataset):
         return self._num_classes
 
     def __getitem__(self, index):
-        indices = self.category_id_map[self.categories[index%self.num_classes]]
+        indices = self.category_id_map[self.categories[index %
+                                                       self.num_classes]]
         mask = self.mask[index] if self.tokenisation_mode == TokenisationMode.BERT else None
-        return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index%self.num_classes, attention_mask=mask, target_transform=self.get_target_transform(index))
+        return ZanimDataset(index, indices, self.image_embeddings[indices], self.descriptions[index], index % self.num_classes, attention_mask=mask, target_transform=self.get_target_transform(index))
 
 
 class ZanimDataset(Dataset):
@@ -296,7 +323,7 @@ class ZanimDataset(Dataset):
 
 
 if __name__ == "__main__":
-    
+
     import sys
     import argparse
     parser = argparse.ArgumentParser(description="data module test")
@@ -305,10 +332,10 @@ if __name__ == "__main__":
                         default="label")
     parser.add_argument("--text_encoder",
                         type=str,
-                        default="BERT")                       
+                        default="BERT")
     parser.add_argument("--data_dir",
                         type=str,
-                        default="/content/drive/My Drive/MSc ML/NLP/NLP project/Dataset") 
+                        default="/content/drive/My Drive/MSc ML/NLP/NLP project/Dataset")
     parser.add_argument('--remove_stop_words',
                         action='store_true',
                         help="whether to remove stop words")
@@ -324,14 +351,18 @@ if __name__ == "__main__":
     remove_stop_words = True if args.remove_stop_words else False
 
     data_dir = args.data_dir
-    train, val, test, dictionary = get_zanim(data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
+    train, val, test, dictionary = get_supervised_zanim(
+        data_dir, text_encoder, text_type, remove_stop_words, device=None)
+    train, val, test, dictionary = get_zanim(
+        data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
     print("dictionary", len(dictionary), dictionary)
-    train_loader = BatchMetaDataLoader(train, batch_size=batch_size, shuffle=True, num_workers=0)
+    train_loader = BatchMetaDataLoader(
+        train, batch_size=batch_size, shuffle=True, num_workers=0)
 
     # check first couple batches
     for batch_idx, batch in enumerate(train_loader):
-        train_inputs, train_targets = batch['train']    
-        print("train targets")       
+        train_inputs, train_targets = batch['train']
+        print("train targets")
         print(train_targets.shape, train_targets)
         test_inputs, test_targets = batch['test']
         if text_encoder == "BERT":
