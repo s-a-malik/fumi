@@ -330,9 +330,9 @@ if __name__ == "__main__":
     parser.add_argument("--text_type",
                         type=str,
                         default="label")
-	parser.add_argument("--json_path",
-						type=str,
-						default="train.json")
+    parser.add_argument("--json_path",
+                        type=str,
+                        default="train.json")
     parser.add_argument("--text_encoder",
                         type=str,
                         default="BERT")
