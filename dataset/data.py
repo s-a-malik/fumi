@@ -1,27 +1,26 @@
 
 import json
 import os
-import numpy as np
-import subprocess
-from typing import List
 import random
-import h5py
+import subprocess
 from enum import Enum
+from typing import List
 
+import numpy as np
 import torch
-from torchvision.transforms import Compose
 from torchvision import transforms
-from torchmeta.utils.data import Dataset, ClassDataset, CombinationMetaDataset
-import torchmeta.datasets.helpers as datasets
-from torchmeta.utils.data import BatchMetaDataLoader
-from torchmeta.transforms import ClassSplitter, Categorical
+from torchvision.transforms import Compose
 
-from transformers import BertTokenizer
-
+import h5py
 import nltk
-from nltk.corpus import stopwords
-from gensim.utils import tokenize
+import torchmeta.datasets.helpers as datasets
 from gensim import corpora
+from gensim.utils import tokenize
+from nltk.corpus import stopwords
+from torchmeta.transforms import Categorical, ClassSplitter
+from torchmeta.utils.data import (BatchMetaDataLoader, ClassDataset,
+                                  CombinationMetaDataset, Dataset)
+from transformers import BertTokenizer, BertModel
 
 
 def get_dataset(args):
@@ -42,12 +41,14 @@ def get_dataset(args):
     remove_stop_words = args.remove_stop_words
 
     if dataset == "cub":
-        train, val, test, dictionary = get_CUB(data_dir, num_way, num_shots, num_shots_test)
+        train, val, test, dictionary = get_CUB(
+            data_dir, num_way, num_shots, num_shots_test)
     elif dataset == "zanim":
-        train, val, test, dictionary = get_zanim(data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
+        train, val, test, dictionary = get_zanim(
+            data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
     else:
         raise NotImplementedError()
-    
+
     train_loader = BatchMetaDataLoader(train,
                                        batch_size=args.batch_size,
                                        shuffle=True,
@@ -79,16 +80,22 @@ def get_zanim(data_dir: str, num_way: int, num_shots: int, num_shots_test: int, 
     else:
         NameError(f"text type {text_type} not allowed")
 
-    train = Zanim(root=data_dir, num_classes_per_task=num_way, meta_train=True, tokenisation_mode=token_mode, full_description=full_description, remove_stop_words=remove_stop_words)
-    train_split = ClassSplitter(train, shuffle=True, num_test_per_class=num_shots_test, num_train_per_class=num_shots)
+    train = Zanim(root=data_dir, num_classes_per_task=num_way, meta_train=True, tokenisation_mode=token_mode,
+                  full_description=full_description, remove_stop_words=remove_stop_words)
+    train_split = ClassSplitter(
+        train, shuffle=True, num_test_per_class=num_shots_test, num_train_per_class=num_shots)
     train_split.seed(0)
 
-    val = Zanim(root=data_dir, num_classes_per_task=num_way, meta_val=True, tokenisation_mode=token_mode, full_description=full_description, remove_stop_words=remove_stop_words)
-    val_split = ClassSplitter(val, shuffle=True, num_test_per_class=int(100/num_shots), num_train_per_class=num_shots)
-    val_split.seed(0) 
+    val = Zanim(root=data_dir, num_classes_per_task=num_way, meta_val=True, tokenisation_mode=token_mode,
+                full_description=full_description, remove_stop_words=remove_stop_words)
+    val_split = ClassSplitter(val, shuffle=True, num_test_per_class=int(
+        100/num_shots), num_train_per_class=num_shots)
+    val_split.seed(0)
 
-    test = Zanim(root=data_dir, num_classes_per_task=num_way, meta_test=True, tokenisation_mode=token_mode, full_description=full_description, remove_stop_words=remove_stop_words)
-    test_split = ClassSplitter(test, shuffle=True, num_test_per_class=int(100/num_shots), num_train_per_class=num_shots)
+    test = Zanim(root=data_dir, num_classes_per_task=num_way, meta_test=True, tokenisation_mode=token_mode,
+                 full_description=full_description, remove_stop_words=remove_stop_words)
+    test_split = ClassSplitter(test, shuffle=True, num_test_per_class=int(
+        100/num_shots), num_train_per_class=num_shots)
     test_split.seed(0)
 
     if text_encoder != "BERT":
@@ -96,7 +103,7 @@ def get_zanim(data_dir: str, num_way: int, num_shots: int, num_shots_test: int, 
         dictionary = train.dictionary
     else:
         dictionary = {}
-    
+
     return train_split, val_split, test_split, dictionary
 
 
@@ -111,27 +118,39 @@ def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
 
     test = datasets.CUB(data_dir, ways=num_way, shots=num_shots, test_shots=int(100/num_shots), meta_split="test",
                         download=True)
-    
+
     dictionary = {}
 
     return train, val, test, dictionary
 
 
-class DefaultTransform(Compose):
+class SupervisedZanim(torch.utils.data.Dataset):
 
-    def __init__(self, image_size: int = 256, channel_means: List[float] = [0.485, 0.456, 0.406], channel_stds: List[float] = [0.229, 0.224, 0.225]):
-        super().__init__([
-            transforms.Resize(image_size),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(channel_means, channel_stds)
-        ])
+	def __init__(self, root, json_path="train.json", train=True, val=False, test=False, full_description=True, remove_stop_words=True, device=None, pooling=lambda x: torch.mean(x, axis=0)):
+		super().__init__()
+		if (train + val + test > 1) or (train + val + test == 0):
+			raise ValueError("Only a single value of train, val, test can be true")
+		self._zcd = ZanimClassDataset(root, json_path, meta_train=train, meta_val=val, meta_test=test,
+		                              tokenisation_mode=TokenisationMode.BERT, full_description=full_description, remove_stop_words=remove_stop_words)
+		self.model = BertModel.from_pretrained('bert-base-uncased')
+		self._bert_embeddings = torch.zeros(len(self), self.model.config.hidden_size)
+		if device is not None:
+			self.model.to(device)
 
+		for index in range(len(self._zcd.categories)):
+			self._bert_embeddings[index] = pooling(self.model(
+			    input_ids=self._zcd.descriptions[index], attention_mask=self._zcd.mask[index]).last_hidden_state)
+
+	def __len__(self):
+		return len(self._zcd.category_id)
+
+	def __getitem__(self, index):
+		category_id = self._zcd.category_id[index]
+		return self._zcd.image_embeddings[index], self._bert_embeddings[self._zcd.categories.index(category_id)], category_id
 
 class TokenisationMode(Enum):
     BERT = 1
     STANDARD = 2
-
 
 class Zanim(CombinationMetaDataset):
 
@@ -239,10 +258,6 @@ class ZanimClassDataset(ClassDataset):
         if pipes.returncode != 0:
             raise Exception(f"Error in running custom command {' '.join(command)}: {err.strip()}")
 
-    def retrieve_missing(self):
-        for i in self.image_files:
-            if not(os.path.exists(os.path.join(self.root, i))):
-                self._run_command(["cp", f'/content/drive/My Drive/NLP project/Dataset/{i}', f'/content/zanim/{i}'])
 
     def __len__(self):
         return self._num_classes
