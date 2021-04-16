@@ -149,13 +149,19 @@ class SupervisedZanim(torch.utils.data.Dataset):
         self.model = BertModel.from_pretrained('bert-base-uncased')
         self._bert_embeddings = torch.zeros(
             len(self), self.model.config.hidden_size)
+
+		self._desc_tokens = self._zcd.descriptions.clone()
+		self._mask = self._zcd.mask.clone()
         if device is not None:
             self.model.to(device)
+			self._desc_tokens = self._desc_tokens.descriptions.to(device)
 
         print("Precomputing BERT embeddings")
-        for index in tqdm(range(len(self._zcd.categories))):
-            self._bert_embeddings[index] = pooling(self.model(
-                input_ids=self._zcd.descriptions[index][None, ...], attention_mask=self._zcd.mask[index]).last_hidden_state[None, ...])
+		self._bert_embeddings = pooling(self.model(
+		    input_ids=self._desc_tokens, attention_mask=self._mask).last_hidden_state)
+        # for index in tqdm(range(len(self._zcd.categories))):
+        #     self._bert_embeddings[index] = pooling(self.model(
+        #         input_ids=self._zcd.descriptions[index][None, ...], attention_mask=self._zcd.mask[index]).last_hidden_state[None, ...])
 
     def __len__(self):
         return len(self._zcd.category_id)
@@ -359,7 +365,10 @@ if __name__ == "__main__":
     train, val, test, dictionary = get_supervised_zanim(
         data_dir, args.json_path, text_encoder, text_type, remove_stop_words, device=None)
     for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
-        print(batch.shape)
+		image, text, cat = batch
+		print(image.shape)
+		print(text.shape)
+		print(cat)
         if batch_idx > 10:
             breaks
 
