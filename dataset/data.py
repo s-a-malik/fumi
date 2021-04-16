@@ -159,6 +159,9 @@ class SupervisedZanim(torch.utils.data.Dataset):
 		print("Precomputing BERT embeddings")
 		self._bert_embeddings = pooling(self.model(
 			input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
+		print(self.model(
+		input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state.shape)
+		print(self._bert_embeddings.shape)
 		# print(self._zcd.descriptions.shape)
 		# for index in tqdm(range(len(self._zcd.categories))):
 		    # self._bert_embeddings[index] = pooling(self.model(
