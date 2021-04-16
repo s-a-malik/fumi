@@ -90,7 +90,7 @@ def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str, text_
 	for (train, val, test) in [(True, False, False), (False, True, False), (False, False, True)]:
 		splits.append(SupervisedZanim(root=data_dir, json_path=json_path, train=train, val=val, test=test,
 									  full_description=full_description, remove_stop_words=remove_stop_words, device=device))
-	return tuple(splits), splits[0].dictionary
+	return tuple(splits), splits[0]._zcd.dictionary
 
 
 def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int, num_shots_test: int, text_encoder: str, text_type: str, remove_stop_words: bool):
@@ -169,7 +169,7 @@ class SupervisedZanim(torch.utils.data.Dataset):
 
 	def __getitem__(self, index):
 		category_id = self._zcd.category_id[index]
-		return self._zcd.image_embeddings[index], self._bert_embeddings[self._zcd.categories.index(category_id)].detach().cpu(), category_id
+		return self._zcd.image_embeddings[index], self._bert_embeddings[self._zcd.categories.index(category_id)], category_id
 
 
 class TokenisationMode(Enum):
@@ -373,7 +373,7 @@ if __name__ == "__main__":
 		print(text.shape)
 		print(cat)
 		if batch_idx > 10:
-			breaks
+			break
 
 	train, val, test, dictionary = get_zanim(
 		data_dir, args.json_path, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
