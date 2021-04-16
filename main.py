@@ -268,7 +268,7 @@ def parse_args():
                         default=0.5,
                         help="MAML step size")
     parser.add_argument("--first_order",
-                        action="store_false",
+                        action="store_true",
                         help="Whether to use first-order MAML")
 
 
