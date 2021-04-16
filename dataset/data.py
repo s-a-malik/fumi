@@ -330,6 +330,9 @@ if __name__ == "__main__":
     parser.add_argument("--text_type",
                         type=str,
                         default="label")
+	parser.add_argument("--json_path",
+						type=str,
+						default="train.json")
     parser.add_argument("--text_encoder",
                         type=str,
                         default="BERT")
@@ -352,9 +355,9 @@ if __name__ == "__main__":
 
     data_dir = args.data_dir
     train, val, test, dictionary = get_supervised_zanim(
-        data_dir, text_encoder, text_type, remove_stop_words, device=None)
+        data_dir, args.json_path, text_encoder, text_type, remove_stop_words, device=None)
     train, val, test, dictionary = get_zanim(
-        data_dir, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
+        data_dir, args.json_path, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
     print("dictionary", len(dictionary), dictionary)
     train_loader = BatchMetaDataLoader(
         train, batch_size=batch_size, shuffle=True, num_workers=0)
