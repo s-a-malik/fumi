@@ -152,9 +152,9 @@ class SupervisedZanim(torch.utils.data.Dataset):
 
 		self._desc_tokens = self._zcd.descriptions.clone()
 		self._mask = self._zcd.mask.clone()
-		if device is not None:
-			self.model.to(device)
-			self._desc_tokens = self._desc_tokens.descriptions.to(device)
+		# if device is not None:
+			# self.model.to(device)
+			# self._desc_tokens = self._desc_tokens.descriptions.to(device)
 
 		print("Precomputing BERT embeddings")
 		self._bert_embeddings = pooling(self.model(
