@@ -33,8 +33,8 @@ python main.py --dataset zanim --data_dir ../Dataset --log_dir ./am3 \
 - [ ] Try other word embedding based models. RNN, word2vec (different pooling methods - mean used in AM3)
 - [ ] label + description (just concat label and description strings and then tokenise)
 - [ ] Plots of lamdba with different number of shots/ways. Get particular example classes with high/low lambda
-- [ ] Accuracy as a function of class description
-- [ ] Analysis of worst/best classes (labels and descriptions)
+- [ ] Accuracy as a function of class description length (for different K)
+- [ ] Analysis of worst/best classes (labels and descriptions) - e.g. if class description isn't visual or many out of vocab tokens -> bad.
 - [ ] No text (just image prototype, force lamda = 1 is probs easiest way to do this)
 - [ ] Zero shot - just text (lambda = 0 is probs easiest way to do this) 
 - [ ] vary N, K and see difference in lambda. (lambda should increase with K)
