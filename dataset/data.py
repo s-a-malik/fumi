@@ -21,7 +21,7 @@ from torchmeta.transforms import Categorical, ClassSplitter
 from torchmeta.utils.data import (BatchMetaDataLoader, ClassDataset,
                                   CombinationMetaDataset, Dataset)
 from transformers import BertTokenizer, BertModel
-from torch.data.utils import DataLoader
+from torch.utils.data import DataLoader
 
 
 def get_dataset(args):
