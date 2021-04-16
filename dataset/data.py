@@ -147,18 +147,18 @@ class SupervisedZanim(torch.utils.data.Dataset):
 		self._zcd = ZanimClassDataset(root, json_path, meta_train=train, meta_val=val, meta_test=test,
 									  tokenisation_mode=TokenisationMode.BERT, full_description=full_description, remove_stop_words=remove_stop_words)
 		self.model = BertModel.from_pretrained('bert-base-uncased')
-		self._bert_embeddings = torch.zeros(
-			len(self), self.model.config.hidden_size)
+		# self._bert_embeddings = torch.zeros(
+			# len(self), self.model.config.hidden_size)
 
-		self._desc_tokens = self._zcd.descriptions.clone()
-		self._mask = self._zcd.mask.clone()
+		# self._desc_tokens = self._zcd.descriptions.clone()
+		# self._mask = self._zcd.mask.clone()
 		# if device is not None:
 			# self.model.to(device)
 			# self._desc_tokens = self._desc_tokens.descriptions.to(device)
 
 		print("Precomputing BERT embeddings")
 		self._bert_embeddings = pooling(self.model(
-			input_ids=self._desc_tokens, attention_mask=self._mask).last_hidden_state)
+			input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
 		# for index in tqdm(range(len(self._zcd.categories))):
 		#     self._bert_embeddings[index] = pooling(self.model(
 		#         input_ids=self._zcd.descriptions[index][None, ...], attention_mask=self._zcd.mask[index]).last_hidden_state[None, ...])
