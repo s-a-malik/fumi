@@ -43,7 +43,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     try:
         # Training loop
         for batch_idx, batch in enumerate(train_loader):
-            train_loss, train_acc, train_lamda = evaluate(
+            train_loss, train_acc = evaluate(
                 model=model,
                 batch=batch,
                 optimizer=optimizer,
@@ -99,15 +99,14 @@ def test_loop(args, model, test_loader, max_num_batches):
     avg_test_acc = utils.AverageMeter()
     avg_test_loss = utils.AverageMeter()
     for batch_idx, batch in enumerate(tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
-        with torch.no_grad():
-            test_loss, test_acc, preds, trues, idx, lamda = evaluate(
-                model=model,
-                batch=batch,
-                optimizer=None,
-                device=args.device,
-                step_size=args.step_size,
-                first_order=args.first_order,
-                task="test")
+        test_loss, test_acc = evaluate(
+            model=model,
+            batch=batch,
+            optimizer=None,
+            device=args.device,
+            step_size=args.step_size,
+            first_order=args.first_order,
+            task="test")
         avg_test_acc.update(test_acc)
         avg_test_loss.update(test_loss)
         if batch_idx > max_num_batches - 1:
@@ -125,6 +124,7 @@ def evaluate(model, batch, optimizer, device, step_size, first_order, task="trai
     """
     # Require model in train mode for inner loop update
     model.train()
+    model.zero_grad()
 
     # Support set
     train_inputs, train_targets = batch['train']
