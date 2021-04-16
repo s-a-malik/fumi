@@ -90,7 +90,7 @@ def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str, text_
 	for (train, val, test) in [(True, False, False), (False, True, False), (False, False, True)]:
 		splits.append(SupervisedZanim(root=data_dir, json_path=json_path, train=train, val=val, test=test,
 									  full_description=full_description, remove_stop_words=remove_stop_words, device=device))
-	return tuple(splits), splits[0]._zcd.dictionary
+	return tuple(splits)
 
 
 def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int, num_shots_test: int, text_encoder: str, text_type: str, remove_stop_words: bool):
@@ -365,7 +365,7 @@ if __name__ == "__main__":
 	remove_stop_words = True if args.remove_stop_words else False
 
 	data_dir = args.data_dir
-	train, val, test, dictionary = get_supervised_zanim(
+	train, val, test = get_supervised_zanim(
 		data_dir, args.json_path, text_encoder, text_type, remove_stop_words, device=None)
 	for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
 		image, text, cat = batch
