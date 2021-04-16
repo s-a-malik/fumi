@@ -123,10 +123,8 @@ def evaluate(model, batch, optimizer, device, step_size, first_order, task="trai
     - outer_loss: outer loop loss
     - acc: accuracy on query set
     """
-    if task == "train":
-        model.train()
-    else:
-        model.eval()
+    # Require model in train mode for inner loop update
+    model.train()
 
     # Support set
     train_inputs, train_targets = batch['train']
