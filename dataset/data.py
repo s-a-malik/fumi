@@ -225,6 +225,8 @@ class ZanimClassDataset(ClassDataset):
 			raise ValueError(
 				"One of meta_train, meta_val, meta_test must be true")
 
+		np.sort(self.categories)
+
 		self.image_ids = [i['id'] for i in annotations['images']
 						  if annotations['annotations'][i['id']]['category_id'] in self.categories]
 		print("Building class id mapping")
@@ -244,10 +246,10 @@ class ZanimClassDataset(ClassDataset):
 
 		if full_description:
 			self.descriptions = [annotations['categories']
-								 [i]['description'] for i in self.category_id]
+								 [i]['description'] for i in self.categories]
 		else:
 			self.descriptions = [annotations['categories'][i]['name']
-								 for i in self.category_id]
+								 for i in self.categories]
 
 		print("Copying image embeddings to local disk")
 		if not os.path.exists('/content/image-embedding.hdf5'):
