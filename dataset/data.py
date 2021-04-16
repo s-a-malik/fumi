@@ -7,6 +7,7 @@ from enum import Enum
 from typing import List
 
 import numpy as np
+from tqdm import tqdm
 import torch
 from torchvision import transforms
 from torchvision.transforms import Compose
@@ -151,16 +152,17 @@ class SupervisedZanim(torch.utils.data.Dataset):
         if device is not None:
             self.model.to(device)
 
-        for index in range(len(self._zcd.categories)):
+		print("Precomputing BERT embeddings")
+        for index in tqdm(range(len(self._zcd.categories))):
             self._bert_embeddings[index] = pooling(self.model(
-                input_ids=self._zcd.descriptions[index], attention_mask=self._zcd.mask[index]).last_hidden_state)
+                input_ids=self._zcd.descriptions[index][None, ...], attention_mask=self._zcd.mask[index]).last_hidden_state[None, ...])
 
     def __len__(self):
         return len(self._zcd.category_id)
 
     def __getitem__(self, index):
         category_id = self._zcd.category_id[index]
-        return self._zcd.image_embeddings[index], self._bert_embeddings[self._zcd.categories.index(category_id)], category_id
+        return self._zcd.image_embeddings[index], self._bert_embeddings[self._zcd.categories.index(category_id)].detach().cpu(), category_id
 
 
 class TokenisationMode(Enum):
@@ -356,6 +358,11 @@ if __name__ == "__main__":
     data_dir = args.data_dir
     train, val, test, dictionary = get_supervised_zanim(
         data_dir, args.json_path, text_encoder, text_type, remove_stop_words, device=None)
+    for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
+        print(batch.shape)
+        if batch_idx > 10:
+            breaks
+
     train, val, test, dictionary = get_zanim(
         data_dir, args.json_path, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
     print("dictionary", len(dictionary), dictionary)
