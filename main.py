@@ -274,6 +274,10 @@ def parse_args():
     parser.add_argument("--first_order",
                         action="store_true",
                         help="Whether to use first-order MAML")
+    parser.add_argument("--num_adapt_steps",
+                        type=int,
+                        default=1,
+                        help="Number of MAML inner loop adaptation steps")
 
 
     # run config

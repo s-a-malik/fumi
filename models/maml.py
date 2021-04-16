@@ -44,12 +44,10 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
         # Training loop
         for batch_idx, batch in enumerate(train_loader):
             train_loss, train_acc = evaluate(
+                args=args,
                 model=model,
                 batch=batch,
                 optimizer=optimizer,
-                device=args.device,
-                step_size=args.step_size,
-                first_order=args.first_order,
                 task="train")
 
             wandb.log({"train/acc": train_acc,
@@ -100,12 +98,10 @@ def test_loop(args, model, test_loader, max_num_batches):
     avg_test_loss = utils.AverageMeter()
     for batch_idx, batch in enumerate(tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
         test_loss, test_acc = evaluate(
+            args=args,
             model=model,
             batch=batch,
             optimizer=None,
-            device=args.device,
-            step_size=args.step_size,
-            first_order=args.first_order,
             task="test")
         avg_test_acc.update(test_acc)
         avg_test_loss.update(test_loss)
@@ -114,7 +110,7 @@ def test_loop(args, model, test_loader, max_num_batches):
     return avg_test_loss.avg, avg_test_acc.avg
 
 
-def evaluate(model, batch, optimizer, device, step_size, first_order, task="train"):
+def evaluate(args, model, batch, optimizer, task="train"):
     """
     Evaluate batch on model
 
@@ -128,27 +124,30 @@ def evaluate(model, batch, optimizer, device, step_size, first_order, task="trai
 
     # Support set
     train_inputs, train_targets = batch['train']
-    train_inputs = train_inputs[3].to(device=device)
-    train_targets = train_targets.to(device=device)
+    train_inputs = train_inputs[3].to(device=args.device)
+    train_targets = train_targets.to(device=args.device)
 
     # Query set
     test_inputs, test_targets = batch['test']
-    test_inputs = test_inputs[3].to(device=device)
-    test_targets = test_targets.to(device=device)
+    test_inputs = test_inputs[3].to(device=args.device)
+    test_targets = test_targets.to(device=args.device)
 
-    outer_loss = torch.tensor(0., device=device)
-    accuracy = torch.tensor(0., device=device)
+    outer_loss = torch.tensor(0., device=args.device)
+    accuracy = torch.tensor(0., device=args.device)
     for task_idx, (train_input, train_target, test_input,
                    test_target) in enumerate(zip(train_inputs, train_targets,
                                                  test_inputs, test_targets)):
-        train_logit = model(train_input)
-        inner_loss = F.cross_entropy(train_logit, train_target)
+        params = None
+        for _ in range(args.num_adapt_steps):
+            train_logit = model(train_input, params=params)
+            inner_loss = F.cross_entropy(train_logit, train_target)
 
-        model.zero_grad()
-        params = gradient_update_parameters(model,
-                                            inner_loss,
-                                            step_size=step_size,
-                                            first_order=first_order)
+            model.zero_grad()
+            params = gradient_update_parameters(model,
+                                                inner_loss,
+                                                params=params,
+                                                step_size=args.step_size,
+                                                first_order=args.first_order)
 
         test_logit = model(test_input, params=params)
         outer_loss += F.cross_entropy(test_logit, test_target)
