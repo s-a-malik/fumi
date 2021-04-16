@@ -157,11 +157,12 @@ class SupervisedZanim(torch.utils.data.Dataset):
 			# self._desc_tokens = self._desc_tokens.descriptions.to(device)
 
 		print("Precomputing BERT embeddings")
-		self._bert_embeddings = pooling(self.model(
-			input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
-		# for index in tqdm(range(len(self._zcd.categories))):
-		#     self._bert_embeddings[index] = pooling(self.model(
-		#         input_ids=self._zcd.descriptions[index][None, ...], attention_mask=self._zcd.mask[index]).last_hidden_state[None, ...])
+		# self._bert_embeddings = pooling(self.model(
+			# input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
+		print(self._zcd.descriptions.shape)
+		for index in tqdm(range(len(self._zcd.categories))):
+		    self._bert_embeddings[index] = pooling(self.model(
+		        input_ids=self._zcd.descriptions[index][None, ...], attention_mask=self._zcd.mask[index]).last_hidden_state[None, ...])
 
 	def __len__(self):
 		return len(self._zcd.category_id)
