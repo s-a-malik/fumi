@@ -16,4 +16,4 @@ dataset.dictionary
 
 # Using a supervised (i.e. 'non-meta') version of the dataset
 
-When using the standard argument-parser, set the flag `--dataset` to `supervised-zanim` rather than `zanim`.
+Use the standard argument-parser and set the flag `--dataset` to `supervised-zanim` rather than `zanim`.
