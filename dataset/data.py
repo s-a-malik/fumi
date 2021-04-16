@@ -152,7 +152,7 @@ class SupervisedZanim(torch.utils.data.Dataset):
         if device is not None:
             self.model.to(device)
 
-		print("Precomputing BERT embeddings")
+        print("Precomputing BERT embeddings")
         for index in tqdm(range(len(self._zcd.categories))):
             self._bert_embeddings[index] = pooling(self.model(
                 input_ids=self._zcd.descriptions[index][None, ...], attention_mask=self._zcd.mask[index]).last_hidden_state[None, ...])
