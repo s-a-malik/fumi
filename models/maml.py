@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from tqdm import tqdm
+from collections import OrderedDict
 from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
@@ -17,11 +18,12 @@ class PureImageNetwork(MetaModule):
         self.n_way = n_way
         self.hidden = hidden
 
-        self.net = MetaSequential(
-            MetaLinear(im_embed_dim, hidden),
-            nn.ReLU(),
-            MetaLinear(hidden, n_way)
-        )
+        self.net = MetaSequential(OrderedDict([
+            ('lin1', MetaLinear(im_embed_dim, hidden)),
+            ('relu', nn.ReLU()),
+            ('lin2', MetaLinear(hidden, n_way))
+        ]))
+
 
     def forward(self, inputs, params=None):
       logits = self.net(inputs, params=params)
