@@ -26,7 +26,7 @@ class PureImageNetwork(MetaModule):
 
 
     def forward(self, inputs, params=None):
-      logits = self.net(inputs, params=params)
+      logits = self.net(inputs, params=self.get_subdict(params, 'net'))
       return logits
 
 
