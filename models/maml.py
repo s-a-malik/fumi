@@ -80,7 +80,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                       f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
             # break after max iters or early stopping
-            if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
+            if (batch_idx > args.epochs - 1) or (args.patience > 0 and batch_idx - best_batch_idx > args.patience):
                 break
     except KeyboardInterrupt:
         pass
