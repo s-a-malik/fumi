@@ -140,7 +140,12 @@ def evaluate(args, model, batch, optimizer, task="train"):
                    test_target) in enumerate(zip(train_inputs, train_targets,
                                                  test_inputs, test_targets)):
         params = None
-        for _ in range(args.num_adapt_steps):
+        n_steps = 0
+        if task == "train":
+            n_steps = args.num_train_adapt_steps
+        else:
+            n_steps = args.num_test_adapt_steps
+        for _ in range(n_steps):
             train_logit = model(train_input, params=params)
             inner_loss = F.cross_entropy(train_logit, train_target)
 
