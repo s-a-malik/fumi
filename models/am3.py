@@ -233,7 +233,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     - model (nn.Module): trained model
     """
     # get best val loss
-    best_loss, best_acc, _, _, _, _, _ = test_loop(
+    best_loss, best_acc, _, _, _, _, _, _ = test_loop(
         args, model, val_loader, max_test_batches)
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
