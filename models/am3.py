@@ -166,7 +166,7 @@ class AM3(nn.Module):
         if task == "test":
             test_idx = test_inputs[0]
             train_idx = train_inputs[0]
-            return loss.detach().cpu().numpy(), acc, avg_lamda.detach().cpu().numpy(), preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), train_idx.detach().cpu().numpy(), train_lamda.detach().cpu().numpy()
+            return loss.detach().cpu().numpy(), acc, avg_lamda.detach().cpu().numpy(), preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), train_idx.detach().cpu().numpy(), train_lamda.squeeze(-1).detach().cpu().numpy()
         else:
             return loss.detach().cpu().numpy(), acc, avg_lamda.detach().cpu().numpy()
 
