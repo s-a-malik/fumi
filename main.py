@@ -70,22 +70,23 @@ def main(args):
             "test/acc": test_acc,
             "test/loss": test_loss})
     else:
-        test_loss, test_acc, test_preds, test_true, test_idx, task_idx, avg_lamda = am3.test_loop(
+        test_loss, test_acc, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
             args, model, test_loader, max_test_batches)
-        print(f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}, test avg lamda: {avg_lamda}")
+        print(f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}, test avg lamda: {test_avg_lamda}")
         # TODO more metrics - F1, precision, recall etc.
 
         wandb.log({
             "test/acc": test_acc,
             "test/loss": test_loss,
-            "test/avg_lamda": avg_lamda})
+            "test/avg_lamda": test_avg_lamda})
 
         # save results
         df = pd.DataFrame({
-            "image_idx": test_idx,
-            "task_idx": task_idx,
-            "preds": test_preds,
-            "targets": test_true})
+            "support_idx": support_idx,
+            "support_lamda": support_lamda,
+            "query_idx": query_idx,
+            "query_preds": test_preds,
+            "query_targets": test_true})
         df.to_csv(path_or_buf=f"{results_path}/run_{wandb.run.name}.csv")
     
     wandb.finish()

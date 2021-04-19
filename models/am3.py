@@ -118,7 +118,13 @@ class AM3(nn.Module):
         Returns:
         - loss: prototypical loss
         - acc: accuracy on query set
-        - if test: also return predictions (class for each query)
+        - avg_lamda: average lamda for prototypes in batch
+        - in addtion, if test:
+            - preds: list of class predictions
+            - test_targets: list of true classes
+            - test_idx: list of query set image ids
+            - train_idx: list of support set image ids
+            - train_lamda: list of lamdas for each image in support set
         """
         if task == "train":
             self.train()
@@ -158,10 +164,9 @@ class AM3(nn.Module):
             preds, acc = utils.get_preds(prototypes, test_im_embeddings, test_targets)
         
         if task == "test":
-            # TODO return the query/support images and text per task and lamdas to compare 
-            # returning just the query set targets is not that helpful.
             test_idx = test_inputs[0]
-            return loss.detach().cpu().numpy(), acc, preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), avg_lamda.detach().cpu().numpy()
+            train_idx = train_inputs[0]
+            return loss.detach().cpu().numpy(), acc, avg_lamda.detach().cpu().numpy(), preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), train_idx.detach().cpu().numpy(), train_lamda.detach().cpu().numpy()
         else:
             return loss.detach().cpu().numpy(), acc, avg_lamda.detach().cpu().numpy()
 
@@ -257,7 +262,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
             # eval on validation set periodically
             if batch_idx % args.eval_freq == 0:
                 # evaluate on val set
-                val_loss, val_acc, _, _, _, _, val_lamda = test_loop(
+                val_loss, val_acc, val_lamda, _, _, _, _, _ = test_loop(
                     args, model, val_loader, max_test_batches)
                 is_best = val_loss < best_loss
                 if is_best:
@@ -266,9 +271,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                 wandb.log({"val/acc": val_acc,
                            "val/loss": val_loss,
                            "val/avg_lamda": val_lamda}, step=batch_idx)
-                # TODO save example outputs?
                 # TODO F1/prec/recall etc.?
-                # TODO wandb summary metrics?
 
                 # save checkpoint
                 checkpoint_dict = {
@@ -306,13 +309,14 @@ def test_loop(args, model, test_dataloader, max_num_batches):
     avg_test_loss = utils.AverageMeter()
     test_preds = []
     test_trues = []
-    test_idx = []
-    task_idx = []
+    query_idx = []
+    support_idx = []
+    support_lamdas = []
     avg_lamda = utils.AverageMeter()
 
     for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches, position=0, leave=True)):
         with torch.no_grad():
-            test_loss, test_acc, preds, trues, idx, lamda = model.evaluate(
+            test_loss, test_acc, lamda, preds, trues, query, support, support_lamda = model.evaluate(
                 batch=batch,
                 optimizer=None,
                 num_ways=args.num_ways,
@@ -324,14 +328,14 @@ def test_loop(args, model, test_dataloader, max_num_batches):
         avg_lamda.update(lamda)
         test_preds += preds.tolist()
         test_trues += trues.tolist()
-        test_idx += idx.tolist()
-        # TODO fix to get tasks not batches
-        task_idx += [batch_idx for i in range(len(idx))]
+        query_idx += query.tolist()
+        support_idx += support.tolist()
+        support_lamdas += support_lamda.tolist()
 
         if batch_idx > max_num_batches - 1:
             break
 
-    return avg_test_loss.avg, avg_test_acc.avg, test_preds, test_trues, test_idx, task_idx, avg_lamda.avg
+    return avg_test_loss.avg, avg_test_acc.avg, avg_lamda.avg, test_preds, test_trues, query_idx, support_idx, support_lamdas
 
 
 if __name__ == "__main__":
