@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from tqdm import tqdm
+from collections import OrderedDict
 from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
@@ -17,14 +18,15 @@ class PureImageNetwork(MetaModule):
         self.n_way = n_way
         self.hidden = hidden
 
-        self.net = MetaSequential(
-            MetaLinear(im_embed_dim, hidden),
-            nn.ReLU(),
-            MetaLinear(hidden, n_way)
-        )
+        self.net = MetaSequential(OrderedDict([
+            ('lin1', MetaLinear(im_embed_dim, hidden)),
+            ('relu', nn.ReLU()),
+            ('lin2', MetaLinear(hidden, n_way))
+        ]))
+
 
     def forward(self, inputs, params=None):
-      logits = self.net(inputs, params=params)
+      logits = self.net(inputs, params=self.get_subdict(params, 'net'))
       return logits
 
 
@@ -78,7 +80,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                       f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
             # break after max iters or early stopping
-            if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
+            if (batch_idx > args.epochs - 1) or (args.patience > 0 and batch_idx - best_batch_idx > args.patience):
                 break
     except KeyboardInterrupt:
         pass
@@ -138,7 +140,12 @@ def evaluate(args, model, batch, optimizer, task="train"):
                    test_target) in enumerate(zip(train_inputs, train_targets,
                                                  test_inputs, test_targets)):
         params = None
-        for _ in range(args.num_adapt_steps):
+        n_steps = 0
+        if task == "train":
+            n_steps = args.num_train_adapt_steps
+        else:
+            n_steps = args.num_test_adapt_steps
+        for _ in range(n_steps):
             train_logit = model(train_input, params=params)
             inner_loss = F.cross_entropy(train_logit, train_target)
 
