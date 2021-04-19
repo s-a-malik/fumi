@@ -105,7 +105,7 @@ class AM3(nn.Module):
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
             elif self.text_encoder_type == "rand":
                 # get a random tensor as the embedding
-                text_encoding = 2*torch.rand((B, NK, self.text_emb_dim)) - 1
+                text_encoding = 2*torch.rand(B, NK, self.text_emb_dim) - 1
             else:
                 text_encoding = self.text_encoder(text)
             text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
