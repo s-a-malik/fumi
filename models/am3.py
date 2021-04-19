@@ -46,6 +46,8 @@ class AM3(nn.Module):
         elif self.text_encoder_type == "RNN":
             # TODO RNN implementation
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
+        elif self.text_encoder_type == "rand":
+            pass
         else:
             raise NameError(f"{text_encoder} not allowed as text encoder")
 
@@ -92,20 +94,23 @@ class AM3(nn.Module):
 
         # process
         im_embeddings = self.image_encoder(im)      # (b x N*K x 512)  
-        if not im_only:
+        if im_only:
+            return im_embeddings
+        else:
             if self.text_encoder_type == "BERT":
                 # need to reshape batch for BERT input
                 B, NK, seq_len = text.shape
                 bert_output = self.text_encoder(text.view(-1, seq_len), attention_mask=attn_mask.view(-1, seq_len))
                 # get [CLS] token
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
+            elif self.text_encoder_type == "rand":
+                # get a random tensor as the embedding
+                text_encoding = 2*torch.rand((B, NK, self.text_emb_dim)) - 1
             else:
                 text_encoding = self.text_encoder(text)
             text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
             lamda = torch.sigmoid(self.h(text_embeddings))  # (b x N*K x 1)
             return im_embeddings, text_embeddings, lamda
-        else:
-            return im_embeddings
 
     def evaluate(self, batch, optimizer, num_ways, device, task="train"):
         """Run one episode through model
