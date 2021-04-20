@@ -32,6 +32,8 @@ class AM3(nn.Module):
         elif im_encoder == "resnet":
             # TODO image encoder if raw images
             self.image_encoder = nn.Linear(self.im_emb_dim, self.prototype_dim)
+        else:
+            raise NameError(f"{im_encoder} not allowed as image encoder")
 
         if self.text_encoder_type == "BERT":
             # TODO be able to use any hf bert model (requires correct tokenisation)
@@ -47,7 +49,7 @@ class AM3(nn.Module):
             # TODO RNN implementation
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
         elif self.text_encoder_type == "rand":
-            pass
+            self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
         else:
             raise NameError(f"{text_encoder} not allowed as text encoder")
 
@@ -97,9 +99,9 @@ class AM3(nn.Module):
         if im_only:
             return im_embeddings
         else:
+            B, NK, seq_len = text.shape
             if self.text_encoder_type == "BERT":
                 # need to reshape batch for BERT input
-                B, NK, seq_len = text.shape
                 bert_output = self.text_encoder(text.view(-1, seq_len), attention_mask=attn_mask.view(-1, seq_len))
                 # get [CLS] token
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
@@ -148,6 +150,10 @@ class AM3(nn.Module):
         test_inputs = [x.to(device) for x in test_inputs]
         test_targets = test_targets.to(device)
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
+
+        # TODO try using lambda = 0 or 1 
+        # train_lamda = torch.ones_like(train_lamda)
+        # train_lamda = torch.zeros_like(train_lamda)
 
         # construct prototypes
         prototypes = utils.get_prototypes(
