@@ -66,7 +66,7 @@ def get_dataset(args):
 									 num_workers=args.num_workers)
 	test_loader = BatchMetaDataLoader(test,
 									  batch_size=args.batch_size,
-									  shuffle=False,
+									  shuffle=True,
 									  num_workers=args.num_workers)
 
 	return train_loader, val_loader, test_loader, dictionary
