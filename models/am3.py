@@ -113,7 +113,7 @@ class AM3(nn.Module):
                 text_encoding = self.text_encoder(text)
             
             if self.text_encoder_type == "rand":
-                text_embeddings = 2*torch.rand(B, NK, self.text_emb_dim) - 1
+                text_embeddings = 2*torch.rand(B, NK, self.prototype_dim) - 1
             else:
                 text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
             
