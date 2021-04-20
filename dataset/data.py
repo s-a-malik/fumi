@@ -50,8 +50,11 @@ def get_dataset(args):
 		train, val, test, dictionary = get_zanim(
 			data_dir, json_path, num_way, num_shots, num_shots_test, text_encoder, text_type, remove_stop_words)
 	elif dataset == "supervised-zanim":
-		train, val, test, dictionary = get_supervised_zanim(
+		train, val, test = get_supervised_zanim(
 			data_dir, json_path, text_encoder, text_type, remove_stop_words, args.device)
+		if text_encoder != 'BERT':
+                        raise NotImplementedError()
+                dictionary = {}
 		return tuple(DataLoader(d, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True) for d in [train, val, test]), dictionary
 	else:
 		raise NotImplementedError()
