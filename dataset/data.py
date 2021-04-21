@@ -165,7 +165,7 @@ class SupervisedZanim(torch.utils.data.Dataset):
 			# input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
 		print(self._bert_embeddings.shape)
 		for i, desc in enumerate(self._zcd.descriptions):
-			print(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state)
+			print(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state.shape)
 			# self._bert_embeddings[i] = pooling(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state)
 
 		# self._bert_embeddings = pooling(self._bert_embeddings)
