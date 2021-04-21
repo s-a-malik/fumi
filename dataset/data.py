@@ -160,8 +160,14 @@ class SupervisedZanim(torch.utils.data.Dataset):
 			# self._desc_tokens = self._desc_tokens.descriptions.to(device)
 
 		print("Precomputing BERT embeddings")
-		self._bert_embeddings = pooling(self.model(
-			input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
+		self._bert_embeddings = torch.zeros(len(self._zcd.descriptions), len(self._zcd.descriptions[0]), self.model.config.hidden_size)
+		# pooling(self.model(
+			# input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
+		for i, desc in enumerate(self._zcd.descriptions):
+			self._bert_embeddings[i] = self.model(input_ids=desc, attention_mask=self._zcd.mask[i]).last_hidden_state
+
+		self._bert_embeddings = pooling(self._bert_embeddings)
+
 		# print(self.model(
 		# input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state.shape)
 		print(self._bert_embeddings.shape)
@@ -292,6 +298,7 @@ class ZanimClassDataset(ClassDataset):
 			self.dictionary.add_documents([tokenize("<PAD>")])
 			self.descriptions = [[self.dictionary.token2id[z]
 								  for z in tokenize(d)] for d in self.descriptions]
+		print("Completed tokenisation")
 
 	def _copy_image_embeddings(self):
 		self._run_command(
