@@ -162,8 +162,8 @@ class SupervisedZanim(torch.utils.data.Dataset):
 		print("Precomputing BERT embeddings")
 		self._bert_embeddings = pooling(self.model(
 			input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
-		print(self.model(
-		input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state.shape)
+		# print(self.model(
+		# input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state.shape)
 		print(self._bert_embeddings.shape)
 		# print(self._zcd.descriptions.shape)
 		# for index in tqdm(range(len(self._zcd.categories))):
@@ -270,7 +270,8 @@ class ZanimClassDataset(ClassDataset):
 			stop_words = stopwords.words('english')
 			self.descriptions = [" ".join(
 				[w for w in s.split() if not(w in stop_words)]) for s in self.descriptions]
-
+		print("DESC LENGTH")
+		print(len(self.descriptions))
 		if tokenisation_mode == TokenisationMode.BERT:
 			tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 			tokens = tokenizer(self.descriptions, return_token_type_ids=False,
