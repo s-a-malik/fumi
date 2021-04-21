@@ -166,7 +166,8 @@ class SupervisedZanim(torch.utils.data.Dataset):
 		print(self._bert_embeddings.shape)
 		for i, desc in tqdm(enumerate(self._zcd.descriptions)):
 			# print(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state.shape)
-			self._bert_embeddings[i] = pooling(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state.squeeze(0))
+			with torch.no_grad():
+				self._bert_embeddings[i] = pooling(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state.squeeze(0))
 
 		print("Completed embedding computation")
 		print(self._bert_embeddings)
