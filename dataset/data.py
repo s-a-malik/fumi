@@ -142,7 +142,7 @@ def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
 
 class SupervisedZanim(torch.utils.data.Dataset):
 
-	def __init__(self, root, json_path="train.json", train=True, val=False, test=False, full_description=True, remove_stop_words=False, device=None, pooling=lambda x: torch.mean(x, axis=1)):
+	def __init__(self, root, json_path="train.json", train=True, val=False, test=False, full_description=True, remove_stop_words=False, device=None, pooling=lambda x: torch.mean(x, dim=1)):
 		super().__init__()
 		if (train + val + test > 1) or (train + val + test == 0):
 			raise ValueError(
@@ -150,25 +150,20 @@ class SupervisedZanim(torch.utils.data.Dataset):
 		self._zcd = ZanimClassDataset(root, json_path, meta_train=train, meta_val=val, meta_test=test,
 									  tokenisation_mode=TokenisationMode.BERT, full_description=full_description, remove_stop_words=remove_stop_words)
 		self.model = BertModel.from_pretrained('bert-base-uncased')
-		# self._bert_embeddings = torch.zeros(
-			# len(self), self.model.config.hidden_size)
-
-		# self._desc_tokens = self._zcd.descriptions.clone()
-		# self._mask = self._zcd.mask.clone()
-		# if device is not None:
-			# self.model.to(device)
-			# self._desc_tokens = self._desc_tokens.descriptions.to(device)
 
 		print("Precomputing BERT embeddings")
-		self._bert_embeddings = pooling(self.model(
-			input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
-		print(self.model(
-		input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state.shape)
-		print(self._bert_embeddings.shape)
-		# print(self._zcd.descriptions.shape)
-		# for index in tqdm(range(len(self._zcd.categories))):
-		    # self._bert_embeddings[index] = pooling(self.model(
-		        # input_ids=self._zcd.descriptions[index][None, ...], attention_mask=self._zcd.mask[index]).last_hidden_state[None, ...])
+		if device is not None:
+			self.model.to(device)
+		batch_size = 64
+		self._bert_embeddings = torch.zeros(len(self._zcd.descriptions), self.model.config.hidden_size)
+		for start in range(0, len(self._zcd.descriptions), batch_size):
+			with torch.no_grad():
+				end = min(len(self._zcd.descriptions), start+batch_size)
+				des, mas = (self._zcd.descriptions[start:end].to(device), self._zcd.mask[start:end].to(device)) if device is not None else (self._zcd.descriptions[start:end], self._zcd.mask[start:end])
+				self._bert_embeddings[start:end] = pooling(self.model(input_ids=des, attention_mask=mas, output_attentions=False).last_hidden_state)
+
+		print("Completed embedding computation")
+		self._bert_embeddings = self._bert_embeddings.cpu()
 
 	def __len__(self):
 		return len(self._zcd.category_id)
@@ -270,7 +265,8 @@ class ZanimClassDataset(ClassDataset):
 			stop_words = stopwords.words('english')
 			self.descriptions = [" ".join(
 				[w for w in s.split() if not(w in stop_words)]) for s in self.descriptions]
-
+		print("DESC LENGTH")
+		print(len(self.descriptions))
 		if tokenisation_mode == TokenisationMode.BERT:
 			tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 			tokens = tokenizer(self.descriptions, return_token_type_ids=False,
@@ -291,6 +287,7 @@ class ZanimClassDataset(ClassDataset):
 			self.dictionary.add_documents([tokenize("<PAD>")])
 			self.descriptions = [[self.dictionary.token2id[z]
 								  for z in tokenize(d)] for d in self.descriptions]
+		print("Completed tokenisation")
 
 	def _copy_image_embeddings(self):
 		self._run_command(
@@ -362,7 +359,7 @@ if __name__ == "__main__":
 						help="whether to remove stop words")
 
 	args = parser.parse_args(sys.argv[1:])
-
+	args.device = torch.device("cuda")
 	text_type = args.text_type
 	text_encoder = args.text_encoder
 	num_way = 3
@@ -373,7 +370,7 @@ if __name__ == "__main__":
 
 	data_dir = args.data_dir
 	train, val, test = get_supervised_zanim(
-		data_dir, args.json_path, text_encoder, text_type, remove_stop_words, device=None)
+		data_dir, args.json_path, text_encoder, text_type, remove_stop_words, device=args.device)
 	for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
 		image, text, cat = batch
 		print(image.shape)
