@@ -160,14 +160,14 @@ class SupervisedZanim(torch.utils.data.Dataset):
 			# self._desc_tokens = self._desc_tokens.descriptions.to(device)
 
 		print("Precomputing BERT embeddings")
-		self._bert_embeddings = torch.zeros(len(self._zcd.descriptions), self.model.config.hidden_size)
-		# pooling(self.model(
-			# input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
+		# self._bert_embeddings = torch.zeros(len(self._zcd.descriptions), self.model.config.hidden_size)
+		with torch.no_grad():
+			self._bert_embeddings = pooling(self.model(input_ids=self._zcd.descriptions, attention_mask=self._zcd.mask).last_hidden_state)
 		print(self._bert_embeddings.shape)
-		for i, desc in tqdm(enumerate(self._zcd.descriptions)):
+		# for i, desc in tqdm(enumerate(self._zcd.descriptions)):
 			# print(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state.shape)
-			with torch.no_grad():
-				self._bert_embeddings[i] = pooling(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state.squeeze(0))
+			# with torch.no_grad():
+				# self._bert_embeddings[i] = pooling(self.model(input_ids=desc.unsqueeze(0), attention_mask=self._zcd.mask[i].unsqueeze(0)).last_hidden_state.squeeze(0))
 
 		print("Completed embedding computation")
 		print(self._bert_embeddings)
