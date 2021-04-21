@@ -142,7 +142,7 @@ def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
 
 class SupervisedZanim(torch.utils.data.Dataset):
 
-	def __init__(self, root, json_path="train.json", train=True, val=False, test=False, full_description=True, remove_stop_words=False, device=None, pooling=lambda x: torch.mean(x, axis=1)):
+	def __init__(self, root, json_path="train.json", train=True, val=False, test=False, full_description=True, remove_stop_words=False, device=None, pooling=lambda x: torch.mean(x, axis=0)):
 		super().__init__()
 		if (train + val + test > 1) or (train + val + test == 0):
 			raise ValueError(
