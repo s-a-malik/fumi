@@ -10,6 +10,7 @@ import torch
 
 import models.am3 as am3
 import models.maml as maml
+import models.fumi as fumi
 from dataset.data import get_dataset
 import utils
 
@@ -57,12 +58,19 @@ def main(args):
     if not args.evaluate:
         if args.model == "maml":
             model = maml.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
+        if args.model == "fumi":
+            model = fumi.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
         else:
             model = am3.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
 
     # test
-    if args.model == "maml":
-        test_loss, test_acc = maml.test_loop(args, model, test_loader, max_test_batches)
+    if args.model in ["maml", "fumi"]:
+        if args.model == "maml":
+            test_loss, test_acc = maml.test_loop(
+                args, model, test_loader, max_test_batches)
+        else:
+            test_loss, test_acc = fumi.test_loop(
+                args, model, test_loader, max_test_batches)
         print(
             f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}")
 
@@ -100,6 +108,17 @@ def init_model(args, dictionary):
             im_embed_dim=args.im_emb_dim,
             n_way=args.num_ways,
             hidden=args.im_hid_dim
+        )
+    if args.model == "fumi":
+        model = fumi.FUMI(
+            n_way=args.num_ways,
+            im_emb_dim=args.im_emb_dim,
+            im_hid_dim=args.im_hid_dim,
+            text_encoder=args.text_encoder,
+            text_emb_dim=args.text_emb_dim,
+            text_hid_dim=args.text_hid_dim,
+            dictionary=dictionary,
+            pooling_strat=args.pooling_strat
         )
     else:
         model = am3.AM3(
