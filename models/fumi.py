@@ -101,9 +101,9 @@ class FUMI(nn.Module):
 
             if self.text_encoder_type == "BERT":
                 im_params = self.get_im_params(
-                    train_texts[task_idx], train_target, train_attn_masks[task_idx])
+                    train_texts[task_idx], train_target, args.device, train_attn_masks[task_idx])
             else:
-                im_params = self.get_im_params(train_texts[task_idx], train_target)
+                im_params = self.get_im_params(train_texts[task_idx], train_target, args.device)
 
             for _ in range(n_steps):
                 train_logit = self.im_forward(train_imss[task_idx], im_params)
@@ -130,7 +130,7 @@ class FUMI(nn.Module):
 
         return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu().numpy()
 
-    def get_im_params(self, text, targets, attn_mask=None):
+    def get_im_params(self, text, targets, device, attn_mask=None):
         NK, seq_len = text.shape
         if self.text_encoder_type == "BERT":
             # Need to reshape batch for BERT input
@@ -145,7 +145,7 @@ class FUMI(nn.Module):
             text_encoding = self.text_encoder(text)
 
         # Transform to per-class descriptions
-        class_text_enc = torch.empty(self.n_way, self.text_emb_dim)
+        class_text_enc = torch.empty(self.n_way, self.text_emb_dim).to(device)
         for i in range(self.n_way):
             class_text_enc[i] = text_encoding[(targets == i).nonzero(as_tuple=True)[0][0]]
 
