@@ -147,7 +147,7 @@ class FUMI(nn.Module):
         # Transform to per-class descriptions
         class_text_enc = torch.empty(self.n_way, self.text_emb_dim)
         for i in range(self.n_way):
-            class_text_enc[i] = text_encoding[(targets == i).nonzero(as_tuple=True)[0]]
+            class_text_enc[i] = text_encoding[(targets == i).nonzero(as_tuple=True)[0][0]]
 
         return self(class_text_enc)
 
