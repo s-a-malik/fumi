@@ -114,7 +114,6 @@ class FUMI(nn.Module):
                 im_params -= args.step_size * grads
 
             test_logit = self.im_forward(test_imss[task_idx], im_params)
-            # test_logit = self(test_input, params=params)
             outer_loss += F.cross_entropy(test_logit, test_target)
 
             with torch.no_grad():
@@ -154,7 +153,8 @@ class FUMI(nn.Module):
     def im_forward(self, im_embeds, im_params):
         # TODO: Add bias term
         h = F.relu(torch.matmul(im_embeds, im_params[:, :-1]))
-        return torch.matmul(h, torch.unsqueeze(im_params[:, -1], 2))
+        out = torch.matmul(h, torch.unsqueeze(im_params[:, -1], 2))
+        return torch.transpose(torch.squeeze(out), 0, 1)
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
