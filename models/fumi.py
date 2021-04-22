@@ -101,9 +101,9 @@ class FUMI(nn.Module):
 
             if self.text_encoder_type == "BERT":
                 im_params = self.get_im_params(
-                    train_texts[task_idx], train_attn_masks[task_idx])
+                    train_texts[task_idx], train_target, train_attn_masks[task_idx])
             else:
-                im_params = self.get_im_params(train_texts[task_idx])
+                im_params = self.get_im_params(train_texts[task_idx], train_target)
 
             for _ in range(n_steps):
                 train_logit = self.im_forward(train_imss[task_idx], im_params)
@@ -130,21 +130,26 @@ class FUMI(nn.Module):
 
         return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu().numpy()
 
-    def get_im_params(self, text, attn_mask=None):
-        B, NK, seq_len = text.shape
+    def get_im_params(self, text, targets, attn_mask=None):
+        NK, seq_len = text.shape
         if self.text_encoder_type == "BERT":
-            # need to reshape batch for BERT input
+            # Need to reshape batch for BERT input
             bert_output = self.text_encoder(
                 text.view(-1, seq_len), attention_mask=attn_mask.view(-1, seq_len))
-            # get [CLS] token
-            text_encoding = bert_output[1].view(B, NK, -1)  # (b x N*K x 768)
+            # Get [CLS] token
+            text_encoding = bert_output[1].view(NK, -1)  # (N*K x 768)
         elif self.text_encoder_type == "rand":
-            # get a random tensor as the encoding
-            text_encoding = 2*torch.rand(B, NK, self.text_emb_dim) - 1
+            # Get a random tensor as the encoding
+            text_encoding = 2*torch.rand(NK, self.text_emb_dim) - 1
         else:
             text_encoding = self.text_encoder(text)
 
-        return self(text_encoding)
+        # Transform to per-class descriptions
+        class_text_enc = torch.empty(self.n_way, self.text_emb_dim)
+        for i in range(self.n_way):
+            class_text_enc[i] = text_encoding[(targets == i).nonzero(as_tuple=True)[0]]
+
+        return self(class_text_enc)
 
     def im_forward(self, im_embeds, im_params):
         # TODO: Add bias term
