@@ -170,8 +170,9 @@ class SupervisedZanim(torch.utils.data.Dataset):
 
 	def __getitem__(self, index):
 		category_id = self._zcd.category_id[index]
+		image_id = self._zcd.image_ids[index]
 		bert_index = np.where(self._zcd.categories == category_id)[0][0]
-		return self._zcd.image_embeddings[index], self._bert_embeddings[bert_index], category_id
+		return self._zcd.image_embeddings[image_id], self._bert_embeddings[bert_index], category_id
 
 
 class TokenisationMode(Enum):
