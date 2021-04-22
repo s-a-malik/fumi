@@ -111,7 +111,7 @@ class FUMI(nn.Module):
                 grads = torch.autograd.grad(inner_loss,
                                             im_params,
                                             create_graph=not args.first_order)
-                im_params -= args.step_size * grads
+                im_params -= args.step_size * grads[0]
 
             test_logit = self.im_forward(test_imss[task_idx], im_params)
             outer_loss += F.cross_entropy(test_logit, test_target)
@@ -182,7 +182,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
             # Eval on validation set periodically
             if batch_idx % args.eval_freq == 0:
                 val_loss, val_acc = test_loop(
-                    args, val_loader, max_test_batches)
+                    args, model, val_loader, max_test_batches)
                 is_best = val_loss < best_loss
                 if is_best:
                     best_loss = val_loss
