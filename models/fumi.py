@@ -154,7 +154,7 @@ class FUMI(nn.Module):
     def im_forward(self, im_embeds, im_params):
         # TODO: Add bias term
         h = F.relu(torch.matmul(im_embeds, im_params[:, :-1]))
-        return torch.matmul(h, im_params[:, -1])
+        return torch.matmul(h, torch.unsqueeze(im_params[:, -1], 2))
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
