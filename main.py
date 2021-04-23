@@ -11,6 +11,7 @@ import torch
 import models.am3 as am3
 import models.maml as maml
 import models.fumi as fumi
+import models.clip as clip
 from dataset.data import get_dataset
 import utils
 
