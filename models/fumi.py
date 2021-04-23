@@ -43,17 +43,19 @@ class FUMI(nn.Module):
         for param in self.text_encoder.parameters():
             param.requires_grad = False
 
-        # Text embedding to image parameters
+        # Text embedding to head image parameters
         self.net = nn.Sequential(
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
             nn.ReLU(),
-            nn.Linear(self.text_hid_dim, self.im_hid_dim * (self.im_emb_dim + 1))
+            nn.Linear(self.text_hid_dim, self.im_hid_dim)
         )
+
+        # Image embedding to image hidden
+        self.im_body = ImageNetworkBody(self.im_emb_dim, self.im_hid_dim)
 
 
     def forward(self, text_embed):
-      im_params = self.net(text_embed) #, params=self.get_subdict(params, 'net'))
-      return im_params.view(-1, self.im_emb_dim + 1, self.im_hid_dim)
+        return self.net(text_embed)
 
 
     def evaluate(self, args, batch, optimizer, task="train"):
@@ -73,13 +75,11 @@ class FUMI(nn.Module):
         # Support set
         train_inputs, train_targets = batch['train']
         train_inputs = [x.to(args.device) for x in train_inputs]
-        # train_inputs = train_inputs[3].to(device=args.device)
         train_targets = train_targets.to(device=args.device)
 
         # Query set
         test_inputs, test_targets = batch['test']
         test_inputs = [x.to(args.device) for x in test_inputs]
-        # test_inputs = test_inputs[3].to(device=args.device)
         test_targets = test_targets.to(device=args.device)
 
         # Unpack input
@@ -99,21 +99,30 @@ class FUMI(nn.Module):
             else:
                 n_steps = args.num_test_adapt_steps
 
+            body_params = None
             if self.text_encoder_type == "BERT":
-                im_params = self.get_im_params(
+                head_params = self.get_head_params(
                     train_texts[task_idx], train_target, args.device, train_attn_masks[task_idx])
             else:
-                im_params = self.get_im_params(train_texts[task_idx], train_target, args.device)
+                head_params = self.get_head_params(
+                    train_texts[task_idx], train_target, args.device)
 
             for _ in range(n_steps):
-                train_logit = self.im_forward(train_imss[task_idx], im_params)
+                train_logit = self.im_forward(
+                    train_imss[task_idx], body_params, head_params)
                 inner_loss = F.cross_entropy(train_logit, train_target)
                 grads = torch.autograd.grad(inner_loss,
-                                            im_params,
+                                            head_params,
                                             create_graph=not args.first_order)
-                im_params -= args.step_size * grads[0]
+                head_params -= args.step_size * grads[0]
+                self.im_body.zero_grad()
+                body_params = gradient_update_parameters(self.im_body,
+                                                         inner_loss,
+                                                         params=body_params,
+                                                         step_size=args.step_size,
+                                                         first_order=args.first_order)
 
-            test_logit = self.im_forward(test_imss[task_idx], im_params)
+            test_logit = self.im_forward(test_imss[task_idx], body_params, head_params)
             outer_loss += F.cross_entropy(test_logit, test_target)
 
             with torch.no_grad():
@@ -123,13 +132,17 @@ class FUMI(nn.Module):
         accuracy.div_(train_inputs.shape[0])
 
         if task == "train":
-            optimizer.zero_grad()
+            # Text optimizer
+            optimizer[0].zero_grad()
+            # Image optimizer
+            optimizer[1].zero_grad()
             outer_loss.backward()
-            optimizer.step()
+            optimizer[0].step()
+            optimizer[1].step()
 
         return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu().numpy()
 
-    def get_im_params(self, text, targets, device, attn_mask=None):
+    def get_head_params(self, text, targets, device, attn_mask=None):
         NK, seq_len = text.shape
         if self.text_encoder_type == "BERT":
             # Need to reshape batch for BERT input
@@ -150,11 +163,28 @@ class FUMI(nn.Module):
 
         return self(class_text_enc)
 
-    def im_forward(self, im_embeds, im_params):
+    def im_forward(self, im_embeds, body_params, head_params):
         # TODO: Add bias term
-        h = F.relu(torch.matmul(im_embeds, im_params[:, :-1]))
-        out = torch.matmul(h, torch.unsqueeze(im_params[:, -1], 2))
+        h = self.im_body(im_embeds, params=body_params)
+        out = torch.matmul(h, torch.unsqueeze(head_params, 2))
         return torch.transpose(torch.squeeze(out), 0, 1)
+
+    def get_im_body_params(self):
+        return self.im_body.parameters()
+
+
+class ImageNetworkBody(MetaModule):
+    def __init__(self, im_embed_dim=2048, im_hid_dim=64):
+        super(ImageNetworkBody, self).__init__()
+        
+        self.net = MetaSequential(OrderedDict([
+            ('lin1', MetaLinear(im_embed_dim, im_hid_dim)),
+            ('relu', nn.ReLU())
+        ]))
+
+    def forward(self, inputs, params=None):
+      h = self.net(inputs, params=self.get_subdict(params, 'net'))
+      return h
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
@@ -194,7 +224,8 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                     "batch_idx": batch_idx,
                     "state_dict": model.state_dict(),
                     "best_loss": best_loss,
-                    "optimizer": optimizer.state_dict(),
+                    "text_optimizer": optimizer[0].state_dict(),
+                    "im_optimizer": optimizer[1].state_dict(),
                     "args": vars(args)
                 }
                 utils.save_checkpoint(checkpoint_dict, is_best)
