@@ -51,7 +51,8 @@ class FUMI(nn.Module):
         )
 
         # Image embedding to image hidden
-        self.im_body = torch.rand(self.im_emb_dim, self.im_hid_dim, requires_grad=True, device=device)
+        self.im_body = 0.01 * torch.rand(self.im_emb_dim, self.im_hid_dim, device=device) - 0.005
+        self.im_body.requires_grad_()
 
 
     def forward(self, text_embed):
@@ -164,8 +165,8 @@ class FUMI(nn.Module):
     def im_forward(self, im_embeds, body_params, head_params):
         # TODO: Add bias term
         h = F.relu(torch.matmul(im_embeds, body_params))
-        out = torch.matmul(h, torch.unsqueeze(head_params, 2))
-        return torch.transpose(torch.squeeze(out), 0, 1)
+        out = torch.matmul(h, torch.transpose(head_params, 0, 1))
+        return out
 
     def get_im_body_params(self):
         return [self.im_body]
@@ -194,7 +195,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                     "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
 
             # Eval on validation set periodically
-            if batch_idx % args.eval_freq == 0:
+            if batch_idx % args.eval_freq == 0 and batch_idx != 0:
                 val_loss, val_acc = test_loop(
                     args, model, val_loader, max_test_batches)
                 is_best = val_loss < best_loss

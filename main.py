@@ -58,7 +58,7 @@ def main(args):
     if not args.evaluate:
         if args.model == "maml":
             model = maml.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
-        if args.model == "fumi":
+        elif args.model == "fumi":
             model = fumi.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
         else:
             model = am3.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
@@ -109,7 +109,7 @@ def init_model(args, dictionary):
             n_way=args.num_ways,
             hidden=args.im_hid_dim
         )
-    if args.model == "fumi":
+    elif args.model == "fumi":
         model = fumi.FUMI(
             n_way=args.num_ways,
             im_emb_dim=args.im_emb_dim,
