@@ -51,7 +51,9 @@ class FUMI(nn.Module):
         )
 
         # Image embedding to image hidden
-        self.im_body = 0.01 * torch.rand(self.im_emb_dim, self.im_hid_dim, device=device) - 0.005
+        self.im_body = torch.empty(self.im_emb_dim, self.im_hid_dim, device=device)
+        # Glorot initialisation
+        nn.init.xavier_uniform_(self.im_body, gain=nn.init.calculate_gain('relu'))
         self.im_body.requires_grad_()
 
 
