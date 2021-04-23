@@ -47,11 +47,11 @@ class FUMI(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
             nn.ReLU(),
-            nn.Linear(self.text_hid_dim, self.im_hid_dim)
+            nn.Linear(self.text_hid_dim, self.im_hid_dim + 1)
         )
 
         # Image embedding to image hidden
-        self.im_body = torch.empty(self.im_emb_dim, self.im_hid_dim, device=device)
+        self.im_body = torch.empty(self.im_emb_dim + 1, self.im_hid_dim, device=device)
         # Glorot initialisation
         nn.init.xavier_uniform_(self.im_body, gain=nn.init.calculate_gain('relu'))
         self.im_body.requires_grad_()
@@ -165,9 +165,9 @@ class FUMI(nn.Module):
         return self(class_text_enc)
 
     def im_forward(self, im_embeds, body_params, head_params):
-        # TODO: Add bias term
-        h = F.relu(torch.matmul(im_embeds, body_params))
-        out = torch.matmul(h, torch.transpose(head_params, 0, 1))
+        h = F.relu(torch.matmul(im_embeds, body_params[:-1]) + body_params[-1])
+        hp = torch.transpose(head_params, 0, 1)
+        out = torch.matmul(h, hp[:-1]) + hp[-1]
         return out
 
     def get_im_body_params(self):
