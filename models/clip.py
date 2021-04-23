@@ -53,10 +53,6 @@ def evaluate(args, model, data):
   model.eval()
 
   for i, batch in enumerate(data):
-    print(device)
-    print(batch)
-    print(batch[1].shape)
-    print(batch[1])
     batch_text = batch[1].to(device)
     batch_image = batch[0].to(device)
     batch_ids = batch[2]
