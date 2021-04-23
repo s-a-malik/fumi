@@ -14,7 +14,7 @@ from models.common import WordEmbedding
 
 
 class FUMI(nn.Module):
-    def __init__(self, n_way=5, im_emb_dim=2048, im_hid_dim=32, text_encoder="BERT",  text_emb_dim=300, text_hid_dim=1024, dictionary=None, pooling_strat="mean", device=None):
+    def __init__(self, n_way=5, im_emb_dim=2048, im_hid_dim=32, text_encoder="BERT",  text_emb_dim=300, text_hid_dim=1024, dictionary=None, pooling_strat="mean"):
         super(FUMI, self).__init__()
         self.n_way = n_way
         self.im_emb_dim = im_emb_dim
@@ -43,23 +43,18 @@ class FUMI(nn.Module):
         for param in self.text_encoder.parameters():
             param.requires_grad = False
 
-        # Text embedding to head image parameters
+        # Text embedding to image parameters
         self.net = nn.Sequential(
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
             nn.ReLU(),
-            nn.Linear(self.text_hid_dim, self.im_hid_dim + 1)
+            nn.Linear(self.text_hid_dim, self.im_hid_dim *
+                      (self.im_emb_dim + 1))
         )
 
-        # Image embedding to image hidden
-        self.im_body = torch.empty(self.im_emb_dim + 1, self.im_hid_dim, device=device)
-        # Glorot initialisation
-        nn.init.xavier_uniform_(self.im_body, gain=nn.init.calculate_gain('relu'))
-        self.im_body.requires_grad_()
-
-
     def forward(self, text_embed):
-        return self.net(text_embed)
-
+      # , params=self.get_subdict(params, 'net'))
+      im_params = self.net(text_embed)
+      return im_params.view(-1, self.im_emb_dim + 1, self.im_hid_dim)
 
     def evaluate(self, args, batch, optimizer, task="train"):
         """
@@ -72,18 +67,19 @@ class FUMI(nn.Module):
         if task == "train":
             self.train()
             self.zero_grad()
-            # TODO: Clear im body grad?
         else:
             self.eval()
 
         # Support set
         train_inputs, train_targets = batch['train']
         train_inputs = [x.to(args.device) for x in train_inputs]
+        # train_inputs = train_inputs[3].to(device=args.device)
         train_targets = train_targets.to(device=args.device)
 
         # Query set
         test_inputs, test_targets = batch['test']
         test_inputs = [x.to(args.device) for x in test_inputs]
+        # test_inputs = test_inputs[3].to(device=args.device)
         test_targets = test_targets.to(device=args.device)
 
         # Unpack input
@@ -103,27 +99,22 @@ class FUMI(nn.Module):
             else:
                 n_steps = args.num_test_adapt_steps
 
-            body_params = self.im_body
             if self.text_encoder_type == "BERT":
-                head_params = self.get_head_params(
+                im_params = self.get_im_params(
                     train_texts[task_idx], train_target, args.device, train_attn_masks[task_idx])
             else:
-                head_params = self.get_head_params(
+                im_params = self.get_im_params(
                     train_texts[task_idx], train_target, args.device)
 
             for _ in range(n_steps):
-                train_logit = self.im_forward(
-                    train_imss[task_idx], body_params, head_params)
+                train_logit = self.im_forward(train_imss[task_idx], im_params)
                 inner_loss = F.cross_entropy(train_logit, train_target)
-                
                 grads = torch.autograd.grad(inner_loss,
-                                            [body_params, head_params],
+                                            im_params,
                                             create_graph=not args.first_order)
+                im_params -= args.step_size * grads[0]
 
-                body_params = body_params - args.step_size * grads[0]
-                head_params = head_params - args.step_size * grads[1]
-
-            test_logit = self.im_forward(test_imss[task_idx], body_params, head_params)
+            test_logit = self.im_forward(test_imss[task_idx], im_params)
             outer_loss += F.cross_entropy(test_logit, test_target)
 
             with torch.no_grad():
@@ -133,17 +124,13 @@ class FUMI(nn.Module):
         accuracy.div_(train_imss.shape[0])
 
         if task == "train":
-            # Text optimizer
-            optimizer[0].zero_grad()
-            # Image optimizer
-            optimizer[1].zero_grad()
+            optimizer.zero_grad()
             outer_loss.backward()
-            optimizer[0].step()
-            optimizer[1].step()
+            optimizer.step()
 
         return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu().numpy()
 
-    def get_head_params(self, text, targets, device, attn_mask=None):
+    def get_im_params(self, text, targets, device, attn_mask=None):
         NK, seq_len = text.shape
         if self.text_encoder_type == "BERT":
             # Need to reshape batch for BERT input
@@ -160,18 +147,16 @@ class FUMI(nn.Module):
         # Transform to per-class descriptions
         class_text_enc = torch.empty(self.n_way, self.text_emb_dim).to(device)
         for i in range(self.n_way):
-            class_text_enc[i] = text_encoding[(targets == i).nonzero(as_tuple=True)[0][0]]
+            class_text_enc[i] = text_encoding[(
+                targets == i).nonzero(as_tuple=True)[0][0]]
 
         return self(class_text_enc)
 
-    def im_forward(self, im_embeds, body_params, head_params):
-        h = F.relu(torch.matmul(im_embeds, body_params[:-1]) + body_params[-1])
-        hp = torch.transpose(head_params, 0, 1)
-        out = torch.matmul(h, hp[:-1]) + hp[-1]
-        return out
-
-    def get_im_body_params(self):
-        return [self.im_body]
+    def im_forward(self, im_embeds, im_params):
+        # TODO: Add bias term
+        h = F.relu(torch.matmul(im_embeds, im_params[:, :-1]))
+        out = torch.matmul(h, torch.unsqueeze(im_params[:, -1], 2))
+        return torch.transpose(torch.squeeze(out), 0, 1)
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
@@ -193,10 +178,10 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                 task="train")
 
             wandb.log({"train/acc": train_acc,
-                    "train/loss": train_loss,
-                    "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
+                       "train/loss": train_loss,
+                       "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
 
-            # Eval on validation set periodically
+            # Eval on validation set periodically
             if batch_idx % args.eval_freq == 0 and batch_idx != 0:
                 val_loss, val_acc = test_loop(
                     args, model, val_loader, max_test_batches)
@@ -205,20 +190,19 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                     best_loss = val_loss
                     best_batch_idx = batch_idx
                 wandb.log({"val/acc": val_acc,
-                        "val/loss": val_loss}, step=batch_idx)
+                           "val/loss": val_loss}, step=batch_idx)
 
                 checkpoint_dict = {
                     "batch_idx": batch_idx,
                     "state_dict": model.state_dict(),
                     "best_loss": best_loss,
-                    "text_optimizer": optimizer[0].state_dict(),
-                    "im_optimizer": optimizer[1].state_dict(),
+                    "optimizer": optimizer.state_dict(),
                     "args": vars(args)
                 }
                 utils.save_checkpoint(checkpoint_dict, is_best)
 
                 print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
-                    f"\nval/loss: {val_loss}, val/acc: {val_acc}")
+                      f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
             # break after max iters or early stopping
             if (batch_idx > args.epochs - 1) or (args.patience > 0 and batch_idx - best_batch_idx > args.patience):
@@ -250,6 +234,7 @@ def test_loop(args, model, test_loader, max_num_batches):
         if batch_idx > max_num_batches - 1:
             break
     return avg_test_loss.avg, avg_test_acc.avg
+
 
 def get_accuracy(logits, targets):
     _, predictions = torch.max(logits, dim=-1)
