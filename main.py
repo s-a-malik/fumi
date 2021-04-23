@@ -60,6 +60,8 @@ def main(args):
             model = maml.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
         elif args.model == "fumi":
             model = fumi.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
+        elif args.model == 'clip':
+            clip.training_run(args, model, optimizer, train_loader, val_loader, n_epochs=10) # TODO add epochs arg
         else:
             model = am3.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
 
@@ -77,6 +79,9 @@ def main(args):
         wandb.log({
             "test/acc": test_acc,
             "test/loss": test_loss})
+    elif args.model == 'clip':
+        test_acc = clip.evaluate(args, model, test_loader)
+        wandb.log({'test/acc' : test_acc})
     else:
         test_loss, test_acc, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
             args, model, test_loader, max_test_batches)
@@ -121,6 +126,12 @@ def init_model(args, dictionary):
             pooling_strat=args.pooling_strat,
             device=args.device
         )
+    elif args.model == "clip":
+        model = clip.CLIP(
+            text_input_dim=args.text_emb_dim,
+            image_input_dim=args.im_emb_dim,
+            latent_dim=512 # TODO add arg for this
+            )
     else:
         model = am3.AM3(
             im_encoder=args.im_encoder,
