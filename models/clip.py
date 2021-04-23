@@ -76,7 +76,7 @@ def evaluate(args, model, data):
   return correct / total
 
 
-def train_clip(args, model, optimizer, train_loader, val_loader, n_epochs):
+def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
   init_val_acc = evaluate(args, model, val_loader)
   print('init val_acc', init_val_acc)
   
