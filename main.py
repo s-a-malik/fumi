@@ -118,7 +118,8 @@ def init_model(args, dictionary):
             text_emb_dim=args.text_emb_dim,
             text_hid_dim=args.text_hid_dim,
             dictionary=dictionary,
-            pooling_strat=args.pooling_strat
+            pooling_strat=args.pooling_strat,
+            device=args.device
         )
     else:
         model = am3.AM3(

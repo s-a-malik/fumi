@@ -14,7 +14,7 @@ from models.common import WordEmbedding
 
 
 class FUMI(nn.Module):
-    def __init__(self, n_way=5, im_emb_dim=2048, im_hid_dim=32, text_encoder="BERT",  text_emb_dim=300, text_hid_dim=1024, dictionary=None, pooling_strat="mean"):
+    def __init__(self, n_way=5, im_emb_dim=2048, im_hid_dim=32, text_encoder="BERT",  text_emb_dim=300, text_hid_dim=1024, dictionary=None, pooling_strat="mean", device=None):
         super(FUMI, self).__init__()
         self.n_way = n_way
         self.im_emb_dim = im_emb_dim
@@ -51,7 +51,7 @@ class FUMI(nn.Module):
         )
 
         # Image embedding to image hidden
-        self.im_body = torch.rand(self.im_embed_dim, self.im_hid_dim, requires_grad=True)
+        self.im_body = torch.rand(self.im_emb_dim, self.im_hid_dim, requires_grad=True, device=device)
 
 
     def forward(self, text_embed):
@@ -68,12 +68,10 @@ class FUMI(nn.Module):
         """
         if task == "train":
             self.train()
-            self.im_body.requires_grad = True
             self.zero_grad()
             # TODO: Clear im body grad?
         else:
             self.eval()
-            self.im_body.requires_grad = False
 
         # Support set
         train_inputs, train_targets = batch['train']
@@ -119,8 +117,8 @@ class FUMI(nn.Module):
                                             [body_params, head_params],
                                             create_graph=not args.first_order)
 
-                body_params -= args.step_size * grads[0]
-                head_params -= args.step_size * grads[1]
+                body_params = body_params - args.step_size * grads[0]
+                head_params = head_params - args.step_size * grads[1]
 
             test_logit = self.im_forward(test_imss[task_idx], body_params, head_params)
             outer_loss += F.cross_entropy(test_logit, test_target)
@@ -170,7 +168,7 @@ class FUMI(nn.Module):
         return torch.transpose(torch.squeeze(out), 0, 1)
 
     def get_im_body_params(self):
-        return self.im_body
+        return [self.im_body]
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
