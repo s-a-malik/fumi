@@ -55,7 +55,8 @@ def get_dataset(args):
 		if text_encoder != 'BERT':
 			raise NotImplementedError()
 		dictionary = {}
-		return tuple(DataLoader(d, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True) for d in [train, val, test]), dictionary
+		dataloaders = tuple(DataLoader(d, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True) for d in [train, val, test]), dictionary
+		return tuple(x for x in [*dataloaders, dictionary])
 	else:
 		raise NotImplementedError()
 
