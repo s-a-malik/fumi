@@ -43,6 +43,8 @@ class CLIP(nn.Module):
     return cosine_sim_normalised
 
 def evaluate(args, model, data):
+  device = args.device
+  
   correct = 0
   total = 0
 
@@ -51,8 +53,8 @@ def evaluate(args, model, data):
   model.eval()
 
   for i, batch in enumerate(data):
-    batch_text = batch[1].to(device).detach()
-    batch_image = batch[0].to(device).detach()
+    batch_text = batch[1].to(device)
+    batch_image = batch[0].to(device)
     batch_ids = batch[2]
 
     batch_size = batch_text.shape[0]
@@ -77,6 +79,8 @@ def evaluate(args, model, data):
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
+  device = args.device
+  
   init_val_acc = evaluate(args, model, val_loader)
   print('init val_acc', init_val_acc)
   
@@ -85,8 +89,8 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
     model.zero_grad()
 
     for bid, batch in enumerate(train_loader):
-      batch_text = batch[1].to(device).detach()
-      batch_image = batch[0].to(device).detach()
+      batch_text = batch[1].to(device)
+      batch_image = batch[0].to(device)
       batch_ids = batch[2]
 
       # TODO - Append discarded pairs to next batch (?)
