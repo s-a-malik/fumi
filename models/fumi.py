@@ -99,30 +99,31 @@ class FUMI(nn.Module):
             else:
                 n_steps = args.num_test_adapt_steps
 
-            body_params = None
             if self.text_encoder_type == "BERT":
                 head_params = self.get_head_params(
                     train_texts[task_idx], train_target, args.device, train_attn_masks[task_idx])
             else:
                 head_params = self.get_head_params(
                     train_texts[task_idx], train_target, args.device)
+            
+            params = OrderedDict(self.im_body.meta_named_parameters())
+            params['head'] = head_params
 
             for _ in range(n_steps):
                 train_logit = self.im_forward(
-                    train_imss[task_idx], body_params, head_params)
+                    train_imss[task_idx], params)
                 inner_loss = F.cross_entropy(train_logit, train_target)
+                
                 grads = torch.autograd.grad(inner_loss,
-                                            head_params,
+                                            params,
                                             create_graph=not args.first_order)
-                head_params -= args.step_size * grads[0]
-                self.im_body.zero_grad()
-                body_params = gradient_update_parameters(self.im_body,
-                                                         inner_loss,
-                                                         params=body_params,
-                                                         step_size=args.step_size,
-                                                         first_order=args.first_order)
 
-            test_logit = self.im_forward(test_imss[task_idx], body_params, head_params)
+                updated_params = OrderedDict()
+                for (name, param), grad in zip(params.items(), grads):
+                    updated_params[name] = param - args.step_size * grad
+                params = updated_params
+
+            test_logit = self.im_forward(test_imss[task_idx], params)
             outer_loss += F.cross_entropy(test_logit, test_target)
 
             with torch.no_grad():
@@ -163,10 +164,12 @@ class FUMI(nn.Module):
 
         return self(class_text_enc)
 
-    def im_forward(self, im_embeds, body_params, head_params):
+    def im_forward(self, im_embeds, params):
         # TODO: Add bias term
-        h = self.im_body(im_embeds, params=body_params)
+        head_params = params.pop('head')
+        h = self.im_body(im_embeds, params=params)
         out = torch.matmul(h, torch.unsqueeze(head_params, 2))
+        params['head'] = head_params
         return torch.transpose(torch.squeeze(out), 0, 1)
 
     def get_im_body_params(self):
