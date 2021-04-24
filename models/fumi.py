@@ -47,12 +47,11 @@ class FUMI(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
             nn.ReLU(),
-            nn.Linear(self.text_hid_dim, self.im_hid_dim *
-                      (self.im_emb_dim + 1))
+            nn.Linear(self.text_hid_dim, (self.im_hid_dim + 1) *    # Add bias term
+                      (self.im_emb_dim + 1))    # Weights for both layers
         )
 
     def forward(self, text_embed):
-      # , params=self.get_subdict(params, 'net'))
       im_params = self.net(text_embed)
       return im_params.view(-1, self.im_emb_dim + 1, self.im_hid_dim)
 
@@ -154,8 +153,9 @@ class FUMI(nn.Module):
 
     def im_forward(self, im_embeds, im_params):
         # TODO: Add bias term
-        h = F.relu(torch.matmul(im_embeds, im_params[:, :-1]))
-        out = torch.matmul(h, torch.unsqueeze(im_params[:, -1], 2))
+        h = F.relu(torch.matmul(im_embeds, im_params[:, :-1, :-1]) + im_params[:, :-1, -1])
+        w_final = torch.unsqueeze(im_params[:, -1], 2)
+        out = torch.matmul(h, w_final[:, :-1]) + w_final[:, -1]
         return torch.transpose(torch.squeeze(out), 0, 1)
 
 
