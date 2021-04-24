@@ -8,6 +8,8 @@ import pandas as pd
 
 import torch
 
+from transformers import AdamW, get_linear_schedule_with_warmup
+
 import models.am3 as am3
 import models.maml as maml
 import models.fumi as fumi
@@ -82,7 +84,7 @@ def main(args):
             "test/loss": test_loss})
     elif args.model == 'clip':
         test_acc = clip.evaluate(args, model, test_loader)
-        wandb.log({'test/acc' : test_acc})
+        wandb.log({'test/acc': test_acc})
     else:
         test_loss, test_acc, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
             args, model, test_loader, max_test_batches)
@@ -164,6 +166,14 @@ def init_optim(args, model):
                                     lr=args.lr,
                                     weight_decay=args.weight_decay,
                                     momentum=args.momentum)
+    elif args.optim == "adamw":
+        optimizer = AdamW(params=model.parameters(),
+                          lr=args.lr)
+    elif args.optim == "adamw_lin_schedule":
+        opt = AdamW(params=model.parameters(),
+                          lr=args.lr)
+        scheduler = get_linear_schedule_with_warmup(opt, args.num_warmup_steps, args.epochs)
+        optimizer = (opt, scheduler)
     else:
         raise NotImplementedError()
 
@@ -228,6 +238,10 @@ def parse_args():
                         type=float,
                         default=0.0005,
                         help="L2 regulariser")
+    parser.add_argument("--num_warm_up_steps",
+                        type=float,
+                        default=10,
+                        help="Warm up lr scheduler")     
     
     # dataloader config
     parser.add_argument("--num_shots",
