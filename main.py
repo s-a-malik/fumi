@@ -64,7 +64,7 @@ def main(args):
         elif args.model == "fumi":
             model = fumi.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
         elif args.model == 'clip':
-            clip.training_run(args, model, optimizer, train_loader, val_loader, n_epochs=10) # TODO add epochs arg
+            clip.training_run(args, model, optimizer, train_loader, val_loader, n_epochs=args.epochs)
         else:
             model = am3.training_run(args, model, optimizer, train_loader, val_loader, max_test_batches)
 
@@ -126,14 +126,13 @@ def init_model(args, dictionary):
             text_emb_dim=args.text_emb_dim,
             text_hid_dim=args.text_hid_dim,
             dictionary=dictionary,
-            pooling_strat=args.pooling_strat,
-            device=args.device
+            pooling_strat=args.pooling_strat
         )
     elif args.model == "clip":
         model = clip.CLIP(
             text_input_dim=args.text_emb_dim,
             image_input_dim=args.im_emb_dim,
-            latent_dim=512 # TODO add arg for this
+            latent_dim=args.clip_latent_dim
             )
     else:
         model = am3.AM3(
@@ -158,16 +157,7 @@ def init_optim(args, model):
     """Initialise optimizer
     """
 
-    if args.model == "fumi":
-        optimizer = (
-            torch.optim.Adam(params=model.parameters(),
-                             lr=args.lr,
-                             weight_decay=args.weight_decay),
-            torch.optim.Adam(params=model.get_im_body_params(),
-                             lr=args.lr,
-                             weight_decay=args.weight_decay)
-        )
-    elif args.optim == "adam":
+    if args.optim == "adam":
         optimizer = torch.optim.Adam(params=model.parameters(),
                                      lr=args.lr,
                                      weight_decay=args.weight_decay)
@@ -337,6 +327,12 @@ def parse_args():
                         type=int,
                         default=1,
                         help="Number of MAML inner test loop adaptation steps")
+
+    # clip config
+    parser.add_argument("--clip_latent_dim",
+                        type=int,
+                        default=512,
+                        help="Dimension of CLIP latent space")
 
 
     # run config

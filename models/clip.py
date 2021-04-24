@@ -122,3 +122,4 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
     # Val
     val_acc = evaluate(args, model, val_loader)
     print('epoch', epoch, 'val_acc', val_acc)
+    wandb.log({'val/acc' : val_acc}, step=epoch)
