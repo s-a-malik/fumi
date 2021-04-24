@@ -153,12 +153,16 @@ class FUMI(nn.Module):
 
     def im_forward(self, im_embeds, im_params):
         bias_len = self.im_hid_dim + 1
-        b_im = im_params[:, :bias_len]
+        b_im = torch.unsqueeze(im_params[:, :bias_len], 2)
         w_im = im_params[:, bias_len:].view(-1, self.im_emb_dim + 1, self.im_hid_dim)
+        
+        a = torch.matmul(im_embeds, w_im[:, :-1])
+        h = F.relu(torch.transpose(a, 1, 2) + b_im[:, :-1])
 
-        h = F.relu(torch.matmul(im_embeds, w_im[:, :-1]) + b_im[:, :-1])
-        out = torch.matmul(h, torch.unsqueeze(w_im[:, -1], 2)) + b_im[:, -1]
-        return torch.transpose(torch.squeeze(out), 0, 1)
+        a_out = torch.matmul(torch.transpose(h, 1, 2),
+                             torch.unsqueeze(w_im[:, -1], 2))
+        out = torch.squeeze(a_out) + b_im[:, -1]
+        return torch.transpose(out, 0, 1)
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
