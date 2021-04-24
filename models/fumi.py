@@ -47,13 +47,13 @@ class FUMI(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
             nn.ReLU(),
-            nn.Linear(self.text_hid_dim, (self.im_hid_dim + 1) *    # Add bias term
-                      (self.im_emb_dim + 1))    # Weights for both layers
+            nn.Linear(self.text_hid_dim,
+                      self.im_hid_dim * (self.im_emb_dim + 1)   # Weights
+                      + self.im_hid_dim + 1)                    # Biases
         )
 
     def forward(self, text_embed):
-      im_params = self.net(text_embed)
-      return im_params.view(-1, self.im_emb_dim + 1, self.im_hid_dim)
+        return self.net(text_embed)
 
     def evaluate(self, args, batch, optimizer, task="train"):
         """
@@ -152,10 +152,12 @@ class FUMI(nn.Module):
         return self(class_text_enc)
 
     def im_forward(self, im_embeds, im_params):
-        # TODO: Add bias term
-        h = F.relu(torch.matmul(im_embeds, im_params[:, :-1, :-1]) + im_params[:, :-1, -1])
-        w_final = torch.unsqueeze(im_params[:, -1], 2)
-        out = torch.matmul(h, w_final[:, :-1]) + w_final[:, -1]
+        bias_len = self.im_hid_dim + 1
+        b_im = im_params[:, :bias_len]
+        w_im = im_params[:, bias_len:].view(-1, self.im_emb_dim + 1, self.im_hid_dim)
+
+        h = F.relu(torch.matmul(im_embeds, w_im[:, :-1]) + b_im[:, :-1])
+        out = torch.matmul(h, torch.unsqueeze(w_im[:, -1], 2)) + b_im[:, -1]
         return torch.transpose(torch.squeeze(out), 0, 1)
 
 
