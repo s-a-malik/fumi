@@ -121,11 +121,12 @@ class AM3(nn.Module):
             lamda = torch.sigmoid(self.h(text_embeddings))  # (b x N*K x 1)
             return im_embeddings, text_embeddings, lamda
 
-    def evaluate(self, batch, optimizer, num_ways, device, task="train"):
+    def evaluate(self, batch, optimizer, scheduler, num_ways, device, task="train"):
         """Run one episode through model
         Params:
         - batch (dict): meta-batch of tasks
-        - optimizer (nn.optim): optimizer tied to model weights.
+        - optimizer (nn.optim): optimizer tied to model weights. 
+        - scheduler: learning rate scheduler
         - num_ways (int): number 'N' of classes to choose from.
         - device (torch.device): cuda or cpu
         - task (str): train, val, test
@@ -177,6 +178,8 @@ class AM3(nn.Module):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            if scheduler:
+                scheduler.step()
 
         with torch.no_grad():
             preds, acc = utils.get_preds(prototypes, test_im_embeddings, test_targets)
@@ -200,6 +203,13 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
 
+    # check if scheduled
+    if type(optimizer) == tuple:
+        opt, scheduler = optimizer
+    else:
+        opt = optimizer
+        scheduler = None
+
     # use try, except to be able to stop partway through training
     # TODO this doesn't work with wandb for some reason. Might be good? no eval on test set.
     # can always call --evaluate later with saved checkpoint
@@ -209,7 +219,8 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
         for batch_idx, batch in enumerate(train_loader):
             train_loss, train_acc, train_lamda = model.evaluate(
                 batch=batch,
-                optimizer=optimizer,
+                optimizer=opt,
+                scheduler=scheduler,
                 num_ways=args.num_ways,
                 device=args.device,
                 task="train")
@@ -281,6 +292,7 @@ def test_loop(args, model, test_dataloader, max_num_batches):
             test_loss, test_acc, lamda, preds, trues, query, support, support_lamda = model.evaluate(
                 batch=batch,
                 optimizer=None,
+                scheduler=None,
                 num_ways=args.num_ways,
                 device=args.device,
                 task="test")
