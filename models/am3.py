@@ -4,9 +4,7 @@
 import wandb
 import torch
 import torch.nn as nn
-import numpy as np
 
-import gensim.downloader as api
 from transformers import BertModel
 from tqdm.autonotebook import tqdm
 
@@ -251,7 +249,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                     "batch_idx": batch_idx,
                     "state_dict": model.state_dict(),
                     "best_loss": best_loss,
-                    "optimizer": optimizer.state_dict(),
+                    "optimizer": opt.state_dict(),
                     "args": vars(args)
                 }
                 utils.save_checkpoint(checkpoint_dict, is_best)
