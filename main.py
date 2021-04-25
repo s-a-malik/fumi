@@ -238,7 +238,7 @@ def parse_args():
                         type=float,
                         default=0.0005,
                         help="L2 regulariser")
-    parser.add_argument("--num_warm_up_steps",
+    parser.add_argument("--num_warmup_steps",
                         type=float,
                         default=10,
                         help="Warm up lr scheduler")     
