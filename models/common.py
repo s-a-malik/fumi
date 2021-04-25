@@ -30,7 +30,7 @@ class WordEmbedding(nn.Module):
             if word == "PAD":
                 self.padding_token = token
                 weights[token, :] = np.zeros(self.embedding_dim)
-            elif word in word_model.vocab:
+            elif word in word_model.key_to_index:
                 weights[token, :] = word_model[word]
             else:
                 OOV.append(word)
