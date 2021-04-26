@@ -106,13 +106,13 @@ class AM3(nn.Module):
                 text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
             elif self.text_encoder_type == "rand":
                 # get a random tensor as the embedding
-                text_encoding = 2*torch.rand(size=(B, NK, self.text_emb_dim), device=im_embeddings.device) - 1
+                # text_encoding = 2*torch.rand(B, NK, self.text_emb_dim) - 1
                 pass
             else:
                 text_encoding = self.text_encoder(text)
             
             if self.text_encoder_type == "rand":
-                text_embeddings = 2*torch.rand(B, NK, self.prototype_dim) - 1
+                text_embeddings = 2*torch.rand(size=(B, NK, self.prototype_dim), device=im_embeddings.device) - 1
             else:
                 text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
             
@@ -158,7 +158,7 @@ class AM3(nn.Module):
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
         # TODO try using lambda = 0 or 1 
-        # train_lamda = torch.ones_like(train_lamda).to(device)
+        train_lamda = torch.ones_like(train_lamda).to(device)
         # train_lamda = torch.zeros_like(train_lamda).to(device)
 
         # construct prototypes
