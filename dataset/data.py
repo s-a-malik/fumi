@@ -22,6 +22,7 @@ from torchmeta.utils.data import (BatchMetaDataLoader, ClassDataset,
                                   CombinationMetaDataset, Dataset)
 from transformers import BertTokenizer, BertModel
 from torch.utils.data import DataLoader
+import torch
 
 
 def get_dataset(args):
@@ -90,7 +91,7 @@ def _convert_zanim_arguments(text_encoder: str, text_type: List[str]):
         "common_name": DescriptionMode.COMMON_NAME
     }
     try:
-        description_mode = Set([modes[l] for l in text_type])
+        description_mode = set([modes[l] for l in text_type])
     except KeyError:
         raise NameError(f"Invalid text type used")
 
@@ -194,6 +195,17 @@ def get_CUB(data_dir: str, num_way: int, num_shots: int, num_shots_test: int):
     return train, val, test, dictionary
 
 
+class TokenisationMode(Enum):
+    BERT = 1
+    STANDARD = 2
+
+
+class DescriptionMode(Enum):
+    FULL_DESCRIPTION = 1
+    LABEL = 2
+    COMMON_NAME = 3
+
+
 class SupervisedZanim(torch.utils.data.Dataset):
     def __init__(self,
                  root,
@@ -250,17 +262,6 @@ class SupervisedZanim(torch.utils.data.Dataset):
         bert_index = np.where(self._zcd.categories == category_id)[0][0]
         return self._zcd.image_embeddings[image_id], self._bert_embeddings[
             bert_index], category_id
-
-
-class TokenisationMode(Enum):
-    BERT = 1
-    STANDARD = 2
-
-
-class DescriptionMode(Enum):
-    FULL_DESCRIPTION = 1
-    LABEL = 2
-    COMMON_NAME = 3
 
 
 class Zanim(CombinationMetaDataset):
@@ -323,7 +324,6 @@ class ZanimClassDataset(ClassDataset):
 
         self.root = root
         self.tokenisation_mode = tokenisation_mode
-        print('Loading json annotations')
         with open(json_path) as annotations:
             annotations = json.load(annotations)
             self.annotations = annotations
@@ -348,7 +348,6 @@ class ZanimClassDataset(ClassDataset):
             if annotations['annotations'][i['id']]['category_id'] in
             self.categories
         ]
-        print("Building class id mapping")
         self.category_id = [
             annotations['annotations'][id]['category_id']
             for id in self.image_ids
