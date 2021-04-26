@@ -50,8 +50,13 @@ def main(args):
     # load previous state
     if args.checkpoint:
         # restore from wandb
+        # checkpoint_file = wandb.restore(
+        #     "ckpt.pth.tar",
+        #     run_path=f"multimodal-image-cls/{args.model}/{args.checkpoint}",
+        #     root=model_path)
+        # get best
         checkpoint_file = wandb.restore(
-            "ckpt.pth.tar",
+            "best.pth.tar",
             run_path=f"multimodal-image-cls/{args.model}/{args.checkpoint}",
             root=model_path)
         # load state dict
