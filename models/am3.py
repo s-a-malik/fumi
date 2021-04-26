@@ -149,7 +149,6 @@ class AM3(nn.Module):
         train_inputs = [x.to(device) for x in train_inputs]
         train_targets = train_targets.to(device)                          
         train_im_embeddings, train_text_embeddings, train_lamda = self(train_inputs)
-        avg_lamda = torch.mean(train_lamda)
 
         # query set
         test_inputs, test_targets = batch['test']
@@ -171,6 +170,7 @@ class AM3(nn.Module):
         
         # this is cross entropy on euclidean distance between prototypes and embeddings
         loss = utils.prototypical_loss(prototypes, test_im_embeddings, test_targets)
+        avg_lamda = torch.mean(train_lamda)
 
         if task == "train":
             optimizer.zero_grad()
