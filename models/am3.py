@@ -158,8 +158,8 @@ class AM3(nn.Module):
         test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
 
         # TODO try using lambda = 0 or 1 
-        # train_lamda = torch.ones_like(train_lamda)
-        # train_lamda = torch.zeros_like(train_lamda)
+        train_lamda = torch.ones_like(train_lamda).to(device)
+        # train_lamda = torch.zeros_like(train_lamda).to(device)
 
         # construct prototypes
         prototypes = utils.get_prototypes(
