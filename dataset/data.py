@@ -116,7 +116,7 @@ def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
                             test=test,
                             description_mode=description_mode,
                             remove_stop_words=remove_stop_words,
-image_embedding_model=image_embedding_model,
+                            image_embedding_model=image_embedding_model,
                             device=device))
     return tuple(splits)
 
@@ -135,8 +135,8 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                   meta_train=True,
                   tokenisation_mode=token_mode,
                   description_mode=description_mode,
-                  remove_stop_words=remove_stop_words
-				  image_embedding_model=image_embedding_model)
+                  remove_stop_words=remove_stop_words,
+                  image_embedding_model=image_embedding_model)
     train_split = ClassSplitter(train,
                                 shuffle=True,
                                 num_test_per_class=num_shots_test,
@@ -150,7 +150,7 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                 tokenisation_mode=token_mode,
                 description_mode=description_mode,
                 remove_stop_words=remove_stop_words,
-				image_embedding_model=image_embedding_model)
+                image_embedding_model=image_embedding_model)
     val_split = ClassSplitter(val,
                               shuffle=True,
                               num_test_per_class=int(100 / num_shots),
@@ -164,7 +164,7 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                  tokenisation_mode=token_mode,
                  description_mode=description_mode,
                  remove_stop_words=remove_stop_words,
-				 image_embedding_model=image_embedding_model)
+                 image_embedding_model=image_embedding_model)
     test_split = ClassSplitter(test,
                                shuffle=True,
                                num_test_per_class=int(100 / num_shots),
@@ -225,22 +225,23 @@ class SupervisedZanim(torch.utils.data.Dataset):
                  test=False,
                  description_mode=[DescriptionMode.FULL_DESCRIPTION],
                  remove_stop_words=False,
-				 image_embedding_model="resnet-152"
+                 image_embedding_model="resnet-152",
                  device=None,
                  pooling=lambda x: torch.mean(x, dim=1)):
         super().__init__()
         if (train + val + test > 1) or (train + val + test == 0):
             raise ValueError(
                 "Only a single value of train, val, test can be true")
-        self._zcd = ZanimClassDataset(root,
-                                      json_path,
-                                      meta_train=train,
-                                      meta_val=val,
-                                      meta_test=test,
-                                      tokenisation_mode=TokenisationMode.BERT,
-                                      description_mode=description_mode,
-                                      remove_stop_words=remove_stop_words,
-									  image_embedding_model=image_embedding_model)
+        self._zcd = ZanimClassDataset(
+            root,
+            json_path,
+            meta_train=train,
+            meta_val=val,
+            meta_test=test,
+            tokenisation_mode=TokenisationMode.BERT,
+            description_mode=description_mode,
+            remove_stop_words=remove_stop_words,
+            image_embedding_model=image_embedding_model)
         self.model = BertModel.from_pretrained('bert-base-uncased')
 
         print("Precomputing BERT embeddings")
@@ -289,7 +290,7 @@ class Zanim(CombinationMetaDataset):
                      DescriptionMode.FULL_DESCRIPTION
                  ],
                  remove_stop_words=True,
-				 image_embedding_model='resnet-152'
+                 image_embedding_model='resnet-152',
                  target_transform=None):
         """
 		:param root: the path to the root directory of the dataset
@@ -300,15 +301,16 @@ class Zanim(CombinationMetaDataset):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
-        self.dataset = ZanimClassDataset(root,
-                                         json_path,
-                                         meta_train=meta_train,
-                                         meta_val=meta_val,
-                                         meta_test=meta_test,
-                                         tokenisation_mode=tokenisation_mode,
-                                         description_mode=description_mode,
-										 image_embedding_model=image_embedding_model,
-                                         remove_stop_words=remove_stop_words)
+        self.dataset = ZanimClassDataset(
+            root,
+            json_path,
+            meta_train=meta_train,
+            meta_val=meta_val,
+            meta_test=meta_test,
+            tokenisation_mode=tokenisation_mode,
+            description_mode=description_mode,
+            image_embedding_model=image_embedding_model,
+            remove_stop_words=remove_stop_words)
         super().__init__(self.dataset,
                          num_classes_per_task,
                          target_transform=target_transform)
