@@ -180,14 +180,14 @@ class AM3(nn.Module):
                 scheduler.step()
 
         with torch.no_grad():
-            preds, acc = utils.get_preds(prototypes, test_im_embeddings, test_targets)
+            preds, acc, f1, prec, rec = utils.get_preds(prototypes, test_im_embeddings, test_targets)
         
         if task == "test":
             test_idx = test_inputs[0]
             train_idx = train_inputs[0]
-            return loss.detach().cpu().numpy(), acc, avg_lamda.detach().cpu().numpy(), preds, test_targets.detach().cpu().numpy(), test_idx.detach().cpu().numpy(), train_idx.detach().cpu().numpy(), train_lamda.squeeze(-1).detach().cpu().numpy()
+            return loss.detach().cpu().numpy(), acc, f1, prec, rec, avg_lamda.detach().cpu().numpy(), preds, test_targets, test_idx.detach().cpu().numpy(), train_idx.detach().cpu().numpy(), train_lamda.squeeze(-1).detach().cpu().numpy()
         else:
-            return loss.detach().cpu().numpy(), acc, avg_lamda.detach().cpu().numpy()
+            return loss.detach().cpu().numpy(), acc, f1, prec, rec, avg_lamda.detach().cpu().numpy()
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
@@ -196,7 +196,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     - model (nn.Module): trained model
     """
     # get best val loss
-    best_loss, best_acc, _, _, _, _, _, _ = test_loop(
+    best_loss, best_acc, _, _, _, _, _, _,  _, _, _ = test_loop(
         args, model, val_loader, max_test_batches)
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
@@ -208,14 +208,11 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
         opt = optimizer
         scheduler = None
 
-    # use try, except to be able to stop partway through training
-    # TODO this doesn't work with wandb for some reason. Might be good? no eval on test set.
-    # can always call --evaluate later with saved checkpoint
     try:
         # Training loop
         # do in epochs with a max_num_batches instead?
         for batch_idx, batch in enumerate(train_loader):
-            train_loss, train_acc, train_lamda = model.evaluate(
+            train_loss, train_acc, train_f1, train_prec, train_rec, train_lamda = model.evaluate(
                 batch=batch,
                 optimizer=opt,
                 scheduler=scheduler,
@@ -226,6 +223,9 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
             # log
             # TODO track lr etc as well if using scheduler
             wandb.log({"train/acc": train_acc,
+                       "train/f1": train_f1,
+                       "train/prec": train_prec,
+                       "train/rec": train_rec,
                        "train/loss": train_loss,
                        "train/avg_lamda": train_lamda,
                        "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
@@ -233,16 +233,18 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
             # eval on validation set periodically
             if batch_idx % args.eval_freq == 0:
                 # evaluate on val set
-                val_loss, val_acc, val_lamda, _, _, _, _, _ = test_loop(
+                val_loss, val_acc, val_f1, val_prec, val_rec, val_lamda, _, _, _, _, _ = test_loop(
                     args, model, val_loader, max_test_batches)
                 is_best = val_loss < best_loss
                 if is_best:
                     best_loss = val_loss
                     best_batch_idx = batch_idx
                 wandb.log({"val/acc": val_acc,
+                           "val/f1": val_f1,
+                           "val/prec": val_prec,
+                           "val/rec": val_rec,
                            "val/loss": val_loss,
                            "val/avg_lamda": val_lamda}, step=batch_idx)
-                # TODO F1/prec/recall etc.?
 
                 # save checkpoint
                 checkpoint_dict = {
@@ -271,12 +273,23 @@ def test_loop(args, model, test_dataloader, max_num_batches):
     Test on 1000 randomly sampled tasks, each with 100 query samples (as in AM3)
     Returns:
     - avg_test_acc (float): average test accuracy per task
+    - avg_test_f1 (float): average test f1 per task
+    - avg_test_prec (float): average test prec per task
+    - avg_test_rec (float): average test rec per task
     - avg_test_loss (float): average test loss per task
+    - avg_test_lambda (float): average test lambda per task
+    - test_preds
+    - test_trues
+    - query_idx
+    - support_idx
+    - support_lamdas
     """
-    # TODO add more test metrics + example outputs?
     # TODO need to fix number of tasks/episodes etc. depending on batch, num_ways etc.
 
     avg_test_acc = utils.AverageMeter()
+    avg_test_f1 = utils.AverageMeter()
+    avg_test_prec = utils.AverageMeter()
+    avg_test_rec = utils.AverageMeter()
     avg_test_loss = utils.AverageMeter()
     test_preds = []
     test_trues = []
@@ -287,7 +300,7 @@ def test_loop(args, model, test_dataloader, max_num_batches):
 
     for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches, position=0, leave=True)):
         with torch.no_grad():
-            test_loss, test_acc, lamda, preds, trues, query, support, support_lamda = model.evaluate(
+            test_loss, test_acc, test_f1, test_prec, test_rec, lamda, preds, trues, query, support, support_lamda = model.evaluate(
                 batch=batch,
                 optimizer=None,
                 scheduler=None,
@@ -296,7 +309,11 @@ def test_loop(args, model, test_dataloader, max_num_batches):
                 task="test")
 
         avg_test_acc.update(test_acc)
+        avg_test_f1.update(test_f1)
+        avg_test_prec.update(test_prec)
+        avg_test_rec.update(test_rec)
         avg_test_loss.update(test_loss)
+
         avg_lamda.update(lamda)
         test_preds += preds.tolist()
         test_trues += trues.tolist()
@@ -307,12 +324,16 @@ def test_loop(args, model, test_dataloader, max_num_batches):
         if batch_idx > max_num_batches - 1:
             break
 
-    return avg_test_loss.avg, avg_test_acc.avg, avg_lamda.avg, test_preds, test_trues, query_idx, support_idx, support_lamdas
+    return avg_test_loss.avg, avg_test_acc.avg, avg_test_f1.avg, avg_test_prec.avg, avg_test_rec.avg, avg_lamda.avg, test_preds, test_trues, query_idx, support_idx, support_lamdas
 
 
 if __name__ == "__main__":
+    import os, sys
+    currentdir = os.path.dirname(os.path.realpath(__file__))
+    parentdir = os.path.dirname(currentdir)
+    sys.path.append(parentdir)
 
-    model = AM3(im_encoder="precomputed", im_emb_dim=512, text_encoder="BERT", text_emb_dim=768, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False)
+    model = AM3(im_encoder="precomputed", im_emb_dim=512, text_encoder="rand", text_emb_dim=768, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False)
     print(model)
     N = 5
     K = 2
@@ -328,3 +349,7 @@ if __name__ == "__main__":
     print("prototypes", prototypes.shape)
     loss = utils.prototypical_loss(prototypes, im_embed, targets)   # test on train set
     print("loss", loss)
+    targets[:, 1] = 1
+    preds, acc, f1, prec, rec = utils.get_preds(prototypes, im_embed, targets)
+    print(preds)
+    

@@ -5,8 +5,12 @@ import os
 import shutil
 import wandb
 
+import numpy as np
+
 import torch
 import torch.nn.functional as F
+
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 
 def get_preds(prototypes, embeddings, targets):
@@ -16,14 +20,22 @@ def get_preds(prototypes, embeddings, targets):
     - embeddings (torch.FloatTensor): embeddings of the query points (b, N*K, emb_dim).
     - targets (torch.LongTensor): targets of the query points (b, N*K).
     Returns:
-    - preds (torch.LongTensor): predicted classes of the query points (b, N*K)
-    - accuracy (torch.FloatTensor): Mean accuracy on the query points.
+    - preds (np.array): predicted classes of the query points (b, N*K)
+    - accuracy (float): Mean accuracy on the query points.
+    - 
     """
-    # TODO sing a KD tree would be better?
     sq_distances = torch.sum((prototypes.unsqueeze(1)
         - embeddings.unsqueeze(2)) ** 2, dim=-1)
     _, preds = torch.min(sq_distances, dim=-1)
-    return preds.detach().cpu().numpy(), torch.mean(preds.eq(targets).float())
+
+    # compute f1, prec, recall, acc
+    preds = preds.detach().cpu().numpy()
+    flat_preds = np.reshape(preds, -1)
+    flat_targets = np.reshape(targets.detach().cpu().numpy(), -1)
+    acc = accuracy_score(flat_targets, flat_preds)
+    f1, prec, rec, _ = precision_recall_fscore_support(flat_targets, flat_preds, average="macro")
+
+    return preds, acc, f1, prec, rec
 
 
 def get_prototypes(im_embeddings, text_embeddings, lamdas, targets, num_classes):

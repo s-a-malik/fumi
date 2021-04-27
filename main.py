@@ -111,15 +111,17 @@ def main(args):
         test_acc = clip.evaluate(args, model, test_loader)
         wandb.log({'test/acc': test_acc})
     else:
-        test_loss, test_acc, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
+        test_loss, test_acc, test_f1, test_prec, test_rec, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
             args, model, test_loader, max_test_batches)
         print(
-            f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}, test avg lamda: {test_avg_lamda}"
+            f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc},\ntest f1: {test_f1}, test prec: {test_prec}, test rec: {test_rec}, test avg lamda: {test_avg_lamda}"
         )
-        # TODO more metrics - F1, precision, recall etc.
 
         wandb.log({
             "test/acc": test_acc,
+            "test/f1": test_f1,
+            "test/prec": test_prec,
+            "test/rec": test_rec,
             "test/loss": test_loss,
             "test/avg_lamda": test_avg_lamda
         })
