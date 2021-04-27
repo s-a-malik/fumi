@@ -22,7 +22,9 @@ def get_preds(prototypes, embeddings, targets):
     Returns:
     - preds (np.array): predicted classes of the query points (b, N*K)
     - accuracy (float): Mean accuracy on the query points.
-    - 
+    - f1 (float): f1 score
+    - prec (float): precision
+    - rec (float): recall
     """
     sq_distances = torch.sum((prototypes.unsqueeze(1)
         - embeddings.unsqueeze(2)) ** 2, dim=-1)
