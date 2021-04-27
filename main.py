@@ -181,7 +181,11 @@ def init_optim(args, model):
     """Initialise optimizer
     """
 
-    if args.optim == "adam":
+    if args.model == "fumi":
+        optimizer = torch.optim.Adam(params=[model.parameters(), model.get_shared_feats_params()],
+                                     lr=args.lr,
+                                     weight_decay=args.weight_decay)
+    elif args.optim == "adam":
         optimizer = torch.optim.Adam(params=model.parameters(),
                                      lr=args.lr,
                                      weight_decay=args.weight_decay)
