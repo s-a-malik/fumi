@@ -65,8 +65,7 @@ class FUMI(nn.Module):
             shared_params = self.first(torch.ones(1).to(device))
             bias_len = self.im_hid_dim + 1
             im_params[:, :bias_len-1] = shared_params[:bias_len-1]
-            self.im_emb_dim + 1, self.im_hid_dim
-            im_params[:, bias_len:-self.im_emb_dim] = shared_params[bias_len-1:]
+            im_params[:, bias_len:-self.im_hid_dim] = shared_params[bias_len-1:]
         return self.net(text_embed)
 
     def evaluate(self, args, batch, optimizer, task="train"):
