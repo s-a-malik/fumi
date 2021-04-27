@@ -548,6 +548,7 @@ if __name__ == "__main__":
                                             text_encoder,
                                             text_type,
                                             remove_stop_words,
+                                            image_embedding_model='resnet-152',
                                             device=args.device)
     for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
         image, text, cat = batch
@@ -557,10 +558,16 @@ if __name__ == "__main__":
         if batch_idx > 10:
             break
 
-    train, val, test, dictionary = get_zanim(data_dir, args.json_path, num_way,
-                                             num_shots, num_shots_test,
-                                             text_encoder, text_type,
-                                             remove_stop_words)
+    train, val, test, dictionary = get_zanim(
+        data_dir,
+        args.json_path,
+        num_way,
+        num_shots,
+        num_shots_test,
+        text_encoder,
+        text_type,
+        remove_stop_words,
+        image_embedding_model="resnet-152")
     print("dictionary", len(dictionary), dictionary)
     train_loader = BatchMetaDataLoader(train,
                                        batch_size=batch_size,
