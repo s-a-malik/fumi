@@ -153,7 +153,8 @@ def init_model(args, dictionary):
                           text_emb_dim=args.text_emb_dim,
                           text_hid_dim=args.text_hid_dim,
                           dictionary=dictionary,
-                          pooling_strat=args.pooling_strat)
+                          pooling_strat=args.pooling_strat,
+                          shared_feats=args.shared_feats)
     elif args.model == "clip":
         model = clip.CLIP(text_input_dim=args.text_emb_dim,
                           image_input_dim=args.im_emb_dim,
@@ -179,7 +180,11 @@ def init_optim(args, model):
     """Initialise optimizer
     """
 
-    if args.optim == "adam":
+    if args.model == "fumi":
+        optimizer = torch.optim.Adam(params=[model.parameters(), model.get_shared_feats_params()],
+                                     lr=args.lr,
+                                     weight_decay=args.weight_decay)
+    elif args.optim == "adam":
         optimizer = torch.optim.Adam(params=model.parameters(),
                                      lr=args.lr,
                                      weight_decay=args.weight_decay)
@@ -357,6 +362,9 @@ def parse_args():
                         type=int,
                         default=1,
                         help="Number of MAML inner test loop adaptation steps")
+    parser.add_argument("--shared_feats",
+                        action="store_true",
+                        help="Whether to share first layer weights in FUMI")
 
     # clip config
     parser.add_argument("--clip_latent_dim",

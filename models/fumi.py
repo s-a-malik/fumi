@@ -14,7 +14,7 @@ from models.common import WordEmbedding
 
 
 class FUMI(nn.Module):
-    def __init__(self, n_way=5, im_emb_dim=2048, im_hid_dim=32, text_encoder="BERT",  text_emb_dim=300, text_hid_dim=1024, dictionary=None, pooling_strat="mean"):
+    def __init__(self, n_way=5, im_emb_dim=2048, im_hid_dim=32, text_encoder="BERT",  text_emb_dim=300, text_hid_dim=1024, dictionary=None, pooling_strat="mean", shared_feats=True):
         super(FUMI, self).__init__()
         self.n_way = n_way
         self.im_emb_dim = im_emb_dim
@@ -51,8 +51,21 @@ class FUMI(nn.Module):
                       self.im_hid_dim * (self.im_emb_dim + 1)   # Weights
                       + self.im_hid_dim + 1)                    # Biases
         )
+        self.shared_feats = shared_feats
+        if self.shared_feats:
+            # Bit of a hack to copy torch default weight initialisation
+            self.first = nn.Linear(1,
+                                   self.im_hid_dim * self.im_emb_dim     # Weights
+                                   + self.im_hid_dim,                    # Biases
+                                   bias=False)
 
-    def forward(self, text_embed):
+    def forward(self, text_embed, device):
+        im_params = self.net(text_embed)
+        if self.shared_feats:
+            shared_params = self.first(torch.ones(1).to(device))
+            bias_len = self.im_hid_dim + 1
+            im_params[:, :bias_len-1] = shared_params[:bias_len-1]
+            im_params[:, bias_len:-self.im_hid_dim] = shared_params[bias_len-1:]
         return self.net(text_embed)
 
     def evaluate(self, args, batch, optimizer, task="train"):
@@ -149,7 +162,7 @@ class FUMI(nn.Module):
             class_text_enc[i] = text_encoding[(
                 targets == i).nonzero(as_tuple=True)[0][0]]
 
-        return self(class_text_enc)
+        return self(class_text_enc, device)
 
     def im_forward(self, im_embeds, im_params):
         bias_len = self.im_hid_dim + 1
@@ -163,6 +176,9 @@ class FUMI(nn.Module):
                              torch.unsqueeze(w_im[:, -1], 2))
         out = torch.squeeze(a_out) + b_im[:, -1]
         return torch.transpose(out, 0, 1)
+
+    def get_shared_feats_params(self):
+        return self.first.parameters()
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
