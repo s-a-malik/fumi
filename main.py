@@ -25,10 +25,7 @@ def main(args):
     # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
 
     # set up directories and logs
-    # models are saved to wandb run, this is local storage for restoring
-    model_path = "./checkpoints"
     results_path = f"{args.log_dir}/results"
-    os.makedirs(model_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
     # TODO changing the dir doesn't seem to work on colab
     os.environ["GENSIM_DATA_DIR"] = f"{args.log_dir}/word_embeddings"
@@ -63,6 +60,8 @@ def main(args):
 
     # load previous state
     if args.checkpoint:
+        model_path = f"./checkpoints/{args.model}/{args.checkpoint}"
+        os.makedirs(model_path, exist_ok=True)
         # restore from wandb
         # checkpoint_file = wandb.restore(
         #     "ckpt.pth.tar",
