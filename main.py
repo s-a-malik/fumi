@@ -45,11 +45,11 @@ def main(args):
             "Image embedding model must be one of resnet-152 resnet-34")
     if args.image_embedding_model == "resnet-152" and args.im_emb_dim != 2048:
         raise ValueError(
-            "Resnet-152 output 2048-dimensional embeddings, hence --im_emb_dim should be set to 2048"
+            "Resnet-152 outputs 2048-dimensional embeddings, hence --im_emb_dim should be set to 2048"
         )
     if args.image_embedding_model == "resnet-34" and args.im_emb_dim != 512:
         raise ValueError(
-            "Resnet-34 output 512-dimensional embeddings, hence --im_emb_dim should be set to 512"
+            "Resnet-34 outputs 512-dimensional embeddings, hence --im_emb_dim should be set to 512"
         )
 
     # load datasets
