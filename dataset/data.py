@@ -50,11 +50,14 @@ def get_dataset(args):
         train, val, test, dictionary = get_zanim(data_dir, json_path, num_way,
                                                  num_shots, num_shots_test,
                                                  text_encoder, text_type,
-                                                 remove_stop_words)
+                                                 remove_stop_words,
+                                                 args.image_embedding_model)
     elif dataset == "supervised-zanim":
         train, val, test = get_supervised_zanim(data_dir, json_path,
                                                 text_encoder, text_type,
-                                                remove_stop_words, args.device)
+                                                remove_stop_words,
+                                                args.image_embedding_model,
+                                                args.device)
         if text_encoder != 'BERT':
             raise NotImplementedError()
         dictionary = {}
@@ -99,7 +102,8 @@ def _convert_zanim_arguments(text_encoder: str, text_type: List[str]):
 
 
 def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
-                         text_type: str, remove_stop_words: bool, device: str):
+                         text_type: str, remove_stop_words: bool,
+                         image_embedding_model: str, device: str):
     splits = []
     _, description_mode = _convert_zanim_arguments(text_encoder, text_type)
     for (train, val, test) in [(True, False, False), (False, True, False),
@@ -118,10 +122,12 @@ def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
 
 def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
               num_shots_test: int, text_encoder: str, text_type: str,
-              remove_stop_words: bool):
+              remove_stop_words: bool, image_embedding_model: str):
 
     token_mode, description_mode = _convert_zanim_arguments(
-        text_encoder, text_type)
+        text_encoder,
+        text_type,
+    )
     train = Zanim(root=data_dir,
                   json_path=json_path,
                   num_classes_per_task=num_way,
@@ -315,7 +321,8 @@ class ZanimClassDataset(ClassDataset):
                  description_mode: Set[DescriptionMode] = [
                      DescriptionMode.FULL_DESCRIPTION
                  ],
-                 remove_stop_words=True):
+                 remove_stop_words=True,
+                 image_embedding_model: str = "resnet-152"):
         super().__init__(meta_train=meta_train,
                          meta_val=meta_val,
                          meta_test=meta_test)
@@ -368,9 +375,13 @@ class ZanimClassDataset(ClassDataset):
                                                    self.categories,
                                                    description_mode)
         print("Copying image embeddings to local disk")
-        if not os.path.exists('/content/image-embedding.hdf5'):
-            self._copy_image_embeddings()
-        self.image_embeddings = h5py.File('/content/image-embedding.hdf5',
+
+        image_embedding_file = f"image-embedding-{image_embedding_model}.hdf5"
+        local_image_embedding_path = os.path.join('/content',
+                                                  image_embedding_file)
+        if not os.path.exists(local_image_embedding_path):
+            self._copy_image_embeddings(image_embedding_file)
+        self.image_embeddings = h5py.File(local_image_embedding_path,
                                           'r')['images']
         self._num_classes = len(self.categories)
 
@@ -430,11 +441,9 @@ class ZanimClassDataset(ClassDataset):
         ]
         return descriptions
 
-    def _copy_image_embeddings(self):
-        self._run_command([
-            "cp",
-            os.path.join(self.root, "image-embedding.hdf5"), "/content/"
-        ])
+    def _copy_image_embeddings(self, image_file):
+        self._run_command(
+            ["cp", os.path.join(self.root, image_file), "/content/"])
 
     def _run_command(self, command):
         pipes = subprocess.Popen(command, stderr=subprocess.PIPE)
