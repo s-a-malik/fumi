@@ -40,7 +40,7 @@ def main(args):
                      save_code=True)
     wandb.config.update(args)
 
-    if args.image_embedding_model in ["resnet-152", 'resnet-34']:
+    if not args.image_embedding_model in ["resnet-152", 'resnet-34']:
         raise ValueError(
             "Image embedding model must be one of resnet-152 resnet-34")
     if args.image_embedding_model == "resnet-152" and args.im_emb_dim != 2048:
