@@ -66,7 +66,7 @@ class FUMI(nn.Module):
             bias_len = self.im_hid_dim + 1
             im_params[:, :bias_len-1] = shared_params[:bias_len-1]
             im_params[:, bias_len:-self.im_hid_dim] = shared_params[bias_len-1:]
-        return self.net(text_embed)
+        return im_params
 
     def evaluate(self, args, batch, optimizer, task="train"):
         """
