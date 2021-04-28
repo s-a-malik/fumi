@@ -34,7 +34,7 @@ class FUMI(nn.Module):
             # load pretrained word embeddings as weights
             self.text_encoder = WordEmbedding(
                 self.text_encoder_type, self.pooling_strat, self.dictionary)
-            self.text_emb_dim = self.text_encoder.embedding_dim
+            # self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
         else:
