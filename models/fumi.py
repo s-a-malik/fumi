@@ -177,9 +177,6 @@ class FUMI(nn.Module):
         out = torch.squeeze(a_out) + b_im[:, -1]
         return torch.transpose(out, 0, 1)
 
-    def get_shared_feats_params(self):
-        return self.first.parameters()
-
 
 def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
     """
