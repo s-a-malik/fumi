@@ -43,29 +43,43 @@ class FUMI(nn.Module):
         for param in self.text_encoder.parameters():
             param.requires_grad = False
 
-        # Text embedding to image parameters
-        self.net = nn.Sequential(
-            nn.Linear(self.text_emb_dim, self.text_hid_dim),
-            nn.ReLU(),
-            nn.Linear(self.text_hid_dim,
-                      self.im_hid_dim * (self.im_emb_dim + 1)   # Weights
-                      + self.im_hid_dim + 1)                    # Biases
-        )
         self.shared_feats = shared_feats
         if self.shared_feats:
+            # Text embedding to image parameters
+            self.net = nn.Sequential(
+                nn.Linear(self.text_emb_dim, self.text_hid_dim),
+                nn.ReLU(),
+                nn.Linear(self.text_hid_dim,
+                        self.im_hid_dim     # Weights
+                        + 1)                # Biases
+            )
             # Bit of a hack to copy torch default weight initialisation
             self.first = nn.Linear(1,
                                    self.im_hid_dim * self.im_emb_dim     # Weights
                                    + self.im_hid_dim,                    # Biases
                                    bias=False)
+        else:
+            # Text embedding to image parameters
+            self.net = nn.Sequential(
+                nn.Linear(self.text_emb_dim, self.text_hid_dim),
+                nn.ReLU(),
+                nn.Linear(self.text_hid_dim,
+                        self.im_hid_dim * (self.im_emb_dim + 1)   # Weights
+                        + self.im_hid_dim + 1)                    # Biases
+            )
 
     def forward(self, text_embed, device):
         im_params = self.net(text_embed)
         if self.shared_feats:
             shared_params = self.first(torch.ones(1).to(device))
             bias_len = self.im_hid_dim + 1
-            im_params[:, :bias_len-1] = shared_params[:bias_len-1]
-            im_params[:, bias_len:-self.im_hid_dim] = shared_params[bias_len-1:]
+            out = torch.empty(len(text_embed),
+                              self.im_hid_dim * (self.im_emb_dim + 1) + self.im_hid_dim + 1)
+            out[:, :bias_len-1] = shared_params[:bias_len-1]
+            out[:, bias_len] = im_params[:, 0]
+            out[:, bias_len:-self.im_hid_dim] = shared_params[bias_len-1:]
+            out[:, -self.im_hid_dim:] = im_params[:, 1:]
+            return out
         return im_params
 
     def evaluate(self, args, batch, optimizer, task="train"):
