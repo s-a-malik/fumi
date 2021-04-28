@@ -35,7 +35,7 @@ def get_preds(prototypes, embeddings, targets):
     flat_preds = np.reshape(preds, -1)
     flat_targets = np.reshape(targets.detach().cpu().numpy(), -1)
     acc = accuracy_score(flat_targets, flat_preds)
-    f1, prec, rec, _ = precision_recall_fscore_support(flat_targets, flat_preds, average="macro")
+    prec, rec, f1, _ = precision_recall_fscore_support(flat_targets, flat_preds, average="macro")
 
     return preds, acc, f1, prec, rec
 
