@@ -74,9 +74,9 @@ class FUMI(nn.Module):
             shared_params = self.first(torch.ones(1).to(device))
             bias_len = self.im_hid_dim + 1
             out = torch.empty(len(text_embed),
-                              self.im_hid_dim * (self.im_emb_dim + 1) + self.im_hid_dim + 1)
+                              self.im_hid_dim * (self.im_emb_dim + 1) + self.im_hid_dim + 1).to(device)
             out[:, :bias_len-1] = shared_params[:bias_len-1]
-            out[:, bias_len] = im_params[:, 0]
+            out[:, bias_len-1] = im_params[:, 0]
             out[:, bias_len:-self.im_hid_dim] = shared_params[bias_len-1:]
             out[:, -self.im_hid_dim:] = im_params[:, 1:]
             return out
