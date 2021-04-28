@@ -34,7 +34,7 @@ class FUMI(nn.Module):
             # load pretrained word embeddings as weights
             self.text_encoder = WordEmbedding(
                 self.text_encoder_type, self.pooling_strat, self.dictionary)
-            # self.text_emb_dim = self.text_encoder.embedding_dim
+            self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
         else:
@@ -154,7 +154,7 @@ class FUMI(nn.Module):
             # Get a random tensor as the encoding
             text_encoding = 2*torch.rand(NK, self.text_emb_dim) - 1
         else:
-            text_encoding = self.text_encoder(text)
+            text_encoding = self.text_encoder(text.unsqueeze(0)).squeeze()
 
         # Transform to per-class descriptions
         class_text_enc = torch.empty(self.n_way, self.text_emb_dim).to(device)
