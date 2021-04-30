@@ -153,7 +153,7 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                 image_embedding_model=image_embedding_model)
     val_split = ClassSplitter(val,
                               shuffle=True,
-                              num_test_per_class=int(100 / num_shots),
+                              num_test_per_class=int(100 / num_way),
                               num_train_per_class=num_shots)
     val_split.seed(0)
 
@@ -167,7 +167,7 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                  image_embedding_model=image_embedding_model)
     test_split = ClassSplitter(test,
                                shuffle=True,
-                               num_test_per_class=int(100 / num_shots),
+                               num_test_per_class=int(100 / num_way),
                                num_train_per_class=num_shots)
     test_split.seed(0)
 
