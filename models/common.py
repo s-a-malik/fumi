@@ -88,7 +88,7 @@ class RNN(nn.Module):
         # feed through RNN
         text_embedding_packed = pack_padded_sequence(text_embedding, seq_lens, batch_first=True, enforce_sorted=False)
         rnn_out_packed, _ = self.rnn(text_embedding_packed)
-        rnn_out = pad_packed_sequence(rnn_out_packed, batch_first=True)     # (B*N*K, max_seq_len, rnn_hid_dim*2)
+        rnn_out, _ = pad_packed_sequence(rnn_out_packed, batch_first=True)     # (B*N*K, max_seq_len, rnn_hid_dim*2)
 
         # concat forward and backward results (takes output states)
         rnn_out_forward = rnn_out[:, -1, :self.rnn_hid_dim]     # last state of forward
