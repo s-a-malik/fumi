@@ -44,7 +44,7 @@ class RNN(nn.Module):
     def __init__(self, embedding_type, pooling_strat, dictionary, rnn_hid_dim):
         """Embeds tokenised sequence into a fixed length encoding with an RNN.
         """
-        super(WordEmbedding, self).__init__()
+        super(RNN, self).__init__()
         self.pooling_strat = pooling_strat
         self.dictionary = dictionary
         self.text_encoder_type = text_encoder_type
