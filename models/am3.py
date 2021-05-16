@@ -9,7 +9,7 @@ from transformers import BertModel
 from tqdm.autonotebook import tqdm
 
 import utils
-from models.common import WordEmbedding
+from models.common import WordEmbedding, RNN
 
 
 class AM3(nn.Module):
@@ -17,7 +17,7 @@ class AM3(nn.Module):
         super(AM3, self).__init__()
         self.im_emb_dim = im_emb_dim            # image embedding size
         self.text_encoder_type = text_encoder
-        self.text_emb_dim = text_emb_dim        # only applicable if precomputed
+        self.text_emb_dim = text_emb_dim        # only applicable if precomputed or RNN hid dim.
         self.text_hid_dim = text_hid_dim        # AM3 uses 300
         self.prototype_dim = prototype_dim      # AM3 uses 512 (resnet)
         self.dropout = dropout                  # AM3 uses 0.7 or 0.9 depending on dataset
@@ -45,8 +45,8 @@ class AM3(nn.Module):
             self.text_encoder = WordEmbedding(self.text_encoder_type, self.pooling_strat, self.dictionary)
             self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "RNN":
-            # TODO RNN implementation
-            self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
+            # TODO optional embedding type
+            self.text_encoder = RNN("glove", self.pooling_strat, self.dictionary, self.text_emb_dim)
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
         else:
@@ -109,7 +109,7 @@ class AM3(nn.Module):
                 # text_encoding = 2*torch.rand(B, NK, self.text_emb_dim) - 1
                 pass
             else:
-                text_encoding = self.text_encoder(text)
+                text_encoding = self.text_encoder(text)     # (B, N*K, text_emb_dim)
             
             if self.text_encoder_type == "rand":
                 text_embeddings = 2*torch.rand(size=(B, NK, self.prototype_dim), device=im_embeddings.device) - 1
