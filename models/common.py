@@ -80,7 +80,7 @@ class RNN(nn.Module):
         x_flat = x.view(-1, max_seq_len)    # (B*N*K x max_seq_len)
         # padding_masks
         padding_mask = torch.where(x_flat != self.padding_token, 1, 0)
-        seq_lens = torch.sum(padding_mask, dim=-1)        # (B*N*K)
+        seq_lens = torch.sum(padding_mask, dim=-1).cpu()      # (B*N*K)
 
         # embed
         text_embedding = self.embed(x_flat)      # (B*N*K x max_seq_len x emb_dim)
