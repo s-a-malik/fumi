@@ -92,7 +92,7 @@ class RNN(nn.Module):
 
         # concat forward and backward results (takes output states)
         seq_len_indices = [length-1 for length in seq_lens]
-        batch_indices = [i for i in range(B)]
+        batch_indices = [i for i in range(B*NK)]
         rnn_out_forward = rnn_out[batch_indices, seq_len_indices, :self.rnn_hid_dim]   # last state of forward (not padded)
         rnn_out_backward = rnn_out[:, 0, self.rnn_hid_dim:]     # last state of backward (= first timestep)
         seq_embed = torch.cat((rnn_out_forward, rnn_out_backward), -1)        # (B*N*K, rnn_hid_dim*2)
