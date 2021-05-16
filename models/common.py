@@ -17,7 +17,7 @@ class WordEmbedding(nn.Module):
 
         # get pretrained word embeddings
         embedding_weights = get_embedding_weights(dictionary, text_encoder_type)
-        self.embed =  nn.Embedding.from_pretrained(torch.FloatTensor(embedding_weights))
+        self.embed = nn.Embedding.from_pretrained(torch.FloatTensor(embedding_weights))
 
     def forward(self, x):
         """Params:
@@ -118,7 +118,7 @@ def get_embedding_weights(dictionary, text_encoder_type):
     # randomly initialise OOV tokens between -1 and 1
     weights = 2*np.random.rand(len(dictionary),
                                 embedding_dim) - 1
-    for word, token in self.dictionary.items():
+    for word, token in dictionary.items():
         if word == "PAD":
             padding_token = token
             weights[token, :] = np.zeros(embedding_dim)
