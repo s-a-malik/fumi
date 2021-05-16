@@ -91,7 +91,7 @@ class RNN(nn.Module):
         rnn_out, _ = pad_packed_sequence(rnn_out_packed, batch_first=True)     # (B*N*K, max_seq_len, rnn_hid_dim*2)
 
         # concat forward and backward results (takes output states)
-        rnn_out_forward = rnn_out[:, -1, :self.rnn_hid_dim]     # last state of forward
+        rnn_out_forward = rnn_out[:, seq_lens-1, :self.rnn_hid_dim]     # last state of forward
         rnn_out_backward = rnn_out[:, 0, self.rnn_hid_dim:]     # last state of backward (= first timestep)
         seq_embed = torch.cat((rnn_out_forward, rnn_out_backward), -1)        # (B*N*K, rnn_hid_dim*2)
         # unsqueeze
