@@ -48,7 +48,7 @@ class RNN(nn.Module):
         self.pooling_strat = pooling_strat
         self.dictionary = dictionary
         self.embedding_type = embedding_type
-        self.rnn_hid_dim = rnn_hid_dim / 2      # assuming bidirectional
+        self.rnn_hid_dim = rnn_hid_dim // 2      # assuming bidirectional
         self.padding_token = self.dictionary["PAD"]
 
         # word embedding
