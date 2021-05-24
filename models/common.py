@@ -18,6 +18,7 @@ class WordEmbedding(nn.Module):
         # get pretrained word embeddings
         embedding_weights = get_embedding_weights(dictionary, text_encoder_type)
         self.embed = nn.Embedding.from_pretrained(torch.FloatTensor(embedding_weights))
+        self.embedding_dim = embedding_weights.shape[-1]
 
     def forward(self, x):
         """Params:
