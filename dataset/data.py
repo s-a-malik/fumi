@@ -332,7 +332,8 @@ class ZanimClassDataset(ClassDataset):
                      DescriptionMode.FULL_DESCRIPTION
                  ],
                  remove_stop_words=True,
-                 image_embedding_model: str = "resnet-152"):
+                 image_embedding_model: str = "resnet-152",
+                 categories=None):
         super().__init__(meta_train=meta_train,
                          meta_val=meta_val,
                          meta_test=meta_test)
@@ -348,15 +349,18 @@ class ZanimClassDataset(ClassDataset):
         N = len(annotations['categories'])
         self.categories = np.arange(N)
         np.random.shuffle(self.categories)
-        if meta_train:
-            self.categories = self.categories[:int(0.6 * N)]
-        elif meta_val:
-            self.categories = self.categories[int(0.6 * N):int(0.8 * N)]
-        elif meta_test:
-            self.categories = self.categories[int(0.8 * N):]
+        if categories is None:
+            if meta_train:
+                self.categories = self.categories[:int(0.6 * N)]
+            elif meta_val:
+                self.categories = self.categories[int(0.6 * N):int(0.8 * N)]
+            elif meta_test:
+                self.categories = self.categories[int(0.8 * N):]
+            else:
+                raise ValueError(
+                    "One of meta_train, meta_val, meta_test must be true")
         else:
-            raise ValueError(
-                "One of meta_train, meta_val, meta_test must be true")
+            self.categories = categories
 
         np.sort(self.categories)
 
