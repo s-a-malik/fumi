@@ -8,7 +8,7 @@ import torch.nn as nn
 from transformers import BertModel
 from tqdm.autonotebook import tqdm
 
-from .. import utils
+from .. import utils.utils as utils
 from .common import WordEmbedding, RNN
 
 

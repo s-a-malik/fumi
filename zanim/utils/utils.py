@@ -211,6 +211,7 @@ def parser():
 def init_model(args, dictionary):
     """Initialise model
     """
+    model = None
     if args.model == "maml":
         model = maml.PureImageNetwork(im_embed_dim=args.im_emb_dim,
                                       n_way=args.num_ways,

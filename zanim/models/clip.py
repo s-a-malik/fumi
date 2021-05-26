@@ -6,7 +6,7 @@ import torchvision.models as models
 import torch.utils.data as data
 
 import wandb
-from .. import utils
+from .. import utils.utils
 
 
 class CLIP(nn.Module):
