@@ -7,7 +7,7 @@ setuptools.setup(
     name="zanim",
     version="0.0.1",
     author=
-    " Matthew Jackson, Shreshth Malik, Michael Matthews, Yousuf Mohamed-Ahmed",
+    "Matthew Jackson, Shreshth Malik, Michael Matthews, Yousuf Mohamed-Ahmed",
     author_email="youmed.tech@gmail.com",
     description=
     "Package for the NLP group-project on multi-modal few-shot learning",
