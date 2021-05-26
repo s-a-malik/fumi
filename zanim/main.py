@@ -8,8 +8,6 @@ import pandas as pd
 
 import torch
 
-from transformers import AdamW, get_linear_schedule_with_warmup
-
 import models.am3 as am3
 import models.maml as maml
 import models.fumi as fumi

@@ -8,21 +8,31 @@ import torch.nn as nn
 from transformers import BertModel
 from tqdm.autonotebook import tqdm
 
-import utils
-from models.common import WordEmbedding, RNN
+from .. import utils
+from .common import WordEmbedding, RNN
 
 
 class AM3(nn.Module):
-    def __init__(self, im_encoder, im_emb_dim, text_encoder, text_emb_dim=300, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False, dictionary=None, pooling_strat="mean"):
+    def __init__(self,
+                 im_encoder,
+                 im_emb_dim,
+                 text_encoder,
+                 text_emb_dim=300,
+                 text_hid_dim=300,
+                 prototype_dim=512,
+                 dropout=0.7,
+                 fine_tune=False,
+                 dictionary=None,
+                 pooling_strat="mean"):
         super(AM3, self).__init__()
-        self.im_emb_dim = im_emb_dim            # image embedding size
+        self.im_emb_dim = im_emb_dim  # image embedding size
         self.text_encoder_type = text_encoder
-        self.text_emb_dim = text_emb_dim        # only applicable if precomputed or RNN hid dim.
-        self.text_hid_dim = text_hid_dim        # AM3 uses 300
-        self.prototype_dim = prototype_dim      # AM3 uses 512 (resnet)
-        self.dropout = dropout                  # AM3 uses 0.7 or 0.9 depending on dataset
+        self.text_emb_dim = text_emb_dim  # only applicable if precomputed or RNN hid dim.
+        self.text_hid_dim = text_hid_dim  # AM3 uses 300
+        self.prototype_dim = prototype_dim  # AM3 uses 512 (resnet)
+        self.dropout = dropout  # AM3 uses 0.7 or 0.9 depending on dataset
         self.fine_tune = fine_tune
-        self.dictionary = dictionary            # for word embeddings
+        self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
 
         if im_encoder == "precomputed":
@@ -42,11 +52,14 @@ class AM3(nn.Module):
             self.text_encoder = nn.Identity()
         elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
             # load pretrained word embeddings as weights
-            self.text_encoder = WordEmbedding(self.text_encoder_type, self.pooling_strat, self.dictionary)
+            self.text_encoder = WordEmbedding(self.text_encoder_type,
+                                              self.pooling_strat,
+                                              self.dictionary)
             self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "RNN":
             # TODO optional embedding type
-            self.text_encoder = RNN("glove", self.pooling_strat, self.dictionary, self.text_emb_dim)
+            self.text_encoder = RNN("glove", self.pooling_strat,
+                                    self.dictionary, self.text_emb_dim)
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
         else:
@@ -56,22 +69,17 @@ class AM3(nn.Module):
         if not self.fine_tune:
             for param in self.text_encoder.parameters():
                 param.requires_grad = False
-        
+
         # text to prototype neural net
         self.g = nn.Sequential(
-            nn.Linear(self.text_emb_dim, self.text_hid_dim),
-            nn.ReLU(),
+            nn.Linear(self.text_emb_dim, self.text_hid_dim), nn.ReLU(),
             nn.Dropout(p=self.dropout),
-            nn.Linear(self.text_hid_dim, self.prototype_dim)
-        )
+            nn.Linear(self.text_hid_dim, self.prototype_dim))
 
         # text prototype to lamda neural net
         self.h = nn.Sequential(
-            nn.Linear(self.prototype_dim, self.text_hid_dim),
-            nn.ReLU(),
-            nn.Dropout(p=self.dropout),
-            nn.Linear(self.text_hid_dim, 1)
-        )
+            nn.Linear(self.prototype_dim, self.text_hid_dim), nn.ReLU(),
+            nn.Dropout(p=self.dropout), nn.Linear(self.text_hid_dim, 1))
 
     def forward(self, inputs, im_only=False):
         """
@@ -94,32 +102,44 @@ class AM3(nn.Module):
             idx, text, im = inputs
 
         # process
-        im_embeddings = self.image_encoder(im)      # (b x N*K x 512)  
+        im_embeddings = self.image_encoder(im)  # (b x N*K x 512)
         if im_only:
             return im_embeddings
         else:
             B, NK, seq_len = text.shape
             if self.text_encoder_type == "BERT":
                 # need to reshape batch for BERT input
-                bert_output = self.text_encoder(text.view(-1, seq_len), attention_mask=attn_mask.view(-1, seq_len))
+                bert_output = self.text_encoder(text.view(-1, seq_len),
+                                                attention_mask=attn_mask.view(
+                                                    -1, seq_len))
                 # get [CLS] token
-                text_encoding = bert_output[1].view(B, NK, -1)        # (b x N*K x 768)
+                text_encoding = bert_output[1].view(B, NK,
+                                                    -1)  # (b x N*K x 768)
             elif self.text_encoder_type == "rand":
                 # get a random tensor as the embedding
                 # text_encoding = 2*torch.rand(B, NK, self.text_emb_dim) - 1
                 pass
             else:
-                text_encoding = self.text_encoder(text)     # (B, N*K, text_emb_dim)
-            
+                text_encoding = self.text_encoder(
+                    text)  # (B, N*K, text_emb_dim)
+
             if self.text_encoder_type == "rand":
-                text_embeddings = 2*torch.rand(size=(B, NK, self.prototype_dim), device=im_embeddings.device) - 1
+                text_embeddings = 2 * torch.rand(
+                    size=(B, NK, self.prototype_dim),
+                    device=im_embeddings.device) - 1
             else:
-                text_embeddings = self.g(text_encoding)   # (b x N*K x 512)
-            
+                text_embeddings = self.g(text_encoding)  # (b x N*K x 512)
+
             lamda = torch.sigmoid(self.h(text_embeddings))  # (b x N*K x 1)
             return im_embeddings, text_embeddings, lamda
 
-    def evaluate(self, batch, optimizer, scheduler, num_ways, device, task="train"):
+    def evaluate(self,
+                 batch,
+                 optimizer,
+                 scheduler,
+                 num_ways,
+                 device,
+                 task="train"):
         """Run one episode through model
         Params:
         - batch (dict): meta-batch of tasks
@@ -145,31 +165,31 @@ class AM3(nn.Module):
             self.eval()
 
         # support set
-        train_inputs, train_targets = batch['train']            
+        train_inputs, train_targets = batch['train']
         train_inputs = [x.to(device) for x in train_inputs]
-        train_targets = train_targets.to(device)                          
-        train_im_embeddings, train_text_embeddings, train_lamda = self(train_inputs)
+        train_targets = train_targets.to(device)
+        train_im_embeddings, train_text_embeddings, train_lamda = self(
+            train_inputs)
 
         # query set
         test_inputs, test_targets = batch['test']
         test_inputs = [x.to(device) for x in test_inputs]
         test_targets = test_targets.to(device)
-        test_im_embeddings = self(test_inputs, im_only=True)    # only get image prototype
+        test_im_embeddings = self(test_inputs,
+                                  im_only=True)  # only get image prototype
 
-        # TODO try using lambda = 0 or 1 
+        # TODO try using lambda = 0 or 1
         # train_lamda = torch.ones_like(train_lamda).to(device)
         # train_lamda = torch.zeros_like(train_lamda).to(device)
 
         # construct prototypes
-        prototypes = utils.get_prototypes(
-            train_im_embeddings,
-            train_text_embeddings,
-            train_lamda,
-            train_targets,
-            num_ways)
-        
+        prototypes = utils.get_prototypes(train_im_embeddings,
+                                          train_text_embeddings, train_lamda,
+                                          train_targets, num_ways)
+
         # this is cross entropy on euclidean distance between prototypes and embeddings
-        loss = utils.prototypical_loss(prototypes, test_im_embeddings, test_targets)
+        loss = utils.prototypical_loss(prototypes, test_im_embeddings,
+                                       test_targets)
         avg_lamda = torch.mean(train_lamda)
 
         if task == "train":
@@ -180,23 +200,30 @@ class AM3(nn.Module):
                 scheduler.step()
 
         with torch.no_grad():
-            preds, acc, f1, prec, rec = utils.get_preds(prototypes, test_im_embeddings, test_targets)
-        
+            preds, acc, f1, prec, rec = utils.get_preds(
+                prototypes, test_im_embeddings, test_targets)
+
         if task == "test":
             test_idx = test_inputs[0]
             train_idx = train_inputs[0]
-            return loss.detach().cpu().numpy(), acc, f1, prec, rec, avg_lamda.detach().cpu().numpy(), preds, test_targets, test_idx.detach().cpu().numpy(), train_idx.detach().cpu().numpy(), train_lamda.squeeze(-1).detach().cpu().numpy()
+            return loss.detach().cpu().numpy(
+            ), acc, f1, prec, rec, avg_lamda.detach().cpu().numpy(
+            ), preds, test_targets, test_idx.detach().cpu().numpy(
+            ), train_idx.detach().cpu().numpy(), train_lamda.squeeze(
+                -1).detach().cpu().numpy()
         else:
-            return loss.detach().cpu().numpy(), acc, f1, prec, rec, avg_lamda.detach().cpu().numpy()
+            return loss.detach().cpu().numpy(
+            ), acc, f1, prec, rec, avg_lamda.detach().cpu().numpy()
 
 
-def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
+def training_run(args, model, optimizer, train_loader, val_loader,
+                 max_test_batches):
     """Run training loop
     Returns:
     - model (nn.Module): trained model
     """
     # get best val loss
-    best_loss, best_acc, _, _, _, _, _, _,  _, _, _ = test_loop(
+    best_loss, best_acc, _, _, _, _, _, _, _, _, _ = test_loop(
         args, model, val_loader, max_test_batches)
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
@@ -222,13 +249,17 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
 
             # log
             # TODO track lr etc as well if using scheduler
-            wandb.log({"train/acc": train_acc,
-                       "train/f1": train_f1,
-                       "train/prec": train_prec,
-                       "train/rec": train_rec,
-                       "train/loss": train_loss,
-                       "train/avg_lamda": train_lamda,
-                       "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
+            wandb.log(
+                {
+                    "train/acc": train_acc,
+                    "train/f1": train_f1,
+                    "train/prec": train_prec,
+                    "train/rec": train_rec,
+                    "train/loss": train_loss,
+                    "train/avg_lamda": train_lamda,
+                    "num_episodes": (batch_idx + 1) * args.batch_size
+                },
+                step=batch_idx)
 
             # eval on validation set periodically
             if batch_idx % args.eval_freq == 0:
@@ -239,12 +270,16 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                 if is_best:
                     best_loss = val_loss
                     best_batch_idx = batch_idx
-                wandb.log({"val/acc": val_acc,
-                           "val/f1": val_f1,
-                           "val/prec": val_prec,
-                           "val/rec": val_rec,
-                           "val/loss": val_loss,
-                           "val/avg_lamda": val_lamda}, step=batch_idx)
+                wandb.log(
+                    {
+                        "val/acc": val_acc,
+                        "val/f1": val_f1,
+                        "val/prec": val_prec,
+                        "val/rec": val_rec,
+                        "val/loss": val_loss,
+                        "val/avg_lamda": val_lamda
+                    },
+                    step=batch_idx)
 
                 # save checkpoint
                 checkpoint_dict = {
@@ -256,11 +291,14 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                 }
                 utils.save_checkpoint(checkpoint_dict, is_best)
 
-                print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}, train/avg_lamda: {train_lamda}"
-                      f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {val_lamda}")
+                print(
+                    f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}, train/avg_lamda: {train_lamda}"
+                    f"\nval/loss: {val_loss}, val/acc: {val_acc}, val/avg_lamda: {val_lamda}"
+                )
 
             # break after max iters or early stopping
-            if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx > args.patience):
+            if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx >
+                                                 args.patience):
                 break
     except KeyboardInterrupt:
         pass
@@ -298,7 +336,11 @@ def test_loop(args, model, test_dataloader, max_num_batches):
     support_lamdas = []
     avg_lamda = utils.AverageMeter()
 
-    for batch_idx, batch in enumerate(tqdm(test_dataloader, total=max_num_batches, position=0, leave=True)):
+    for batch_idx, batch in enumerate(
+            tqdm(test_dataloader,
+                 total=max_num_batches,
+                 position=0,
+                 leave=True)):
         with torch.no_grad():
             test_loss, test_acc, test_f1, test_prec, test_rec, lamda, preds, trues, query, support, support_lamda = model.evaluate(
                 batch=batch,
@@ -333,23 +375,31 @@ if __name__ == "__main__":
     parentdir = os.path.dirname(currentdir)
     sys.path.append(parentdir)
 
-    model = AM3(im_encoder="precomputed", im_emb_dim=512, text_encoder="rand", text_emb_dim=768, text_hid_dim=300, prototype_dim=512, dropout=0.7, fine_tune=False)
+    model = AM3(im_encoder="precomputed",
+                im_emb_dim=512,
+                text_encoder="rand",
+                text_emb_dim=768,
+                text_hid_dim=300,
+                prototype_dim=512,
+                dropout=0.7,
+                fine_tune=False)
     print(model)
     N = 5
     K = 2
     B = 5
-    idx = torch.ones(B, N*K)
-    text = torch.ones(B, N*K, 128, dtype=torch.int64)
-    im = torch.ones(B, N*K, 512)   
-    targets = 2*torch.ones(B, N*K, dtype=torch.int64)
+    idx = torch.ones(B, N * K)
+    text = torch.ones(B, N * K, 128, dtype=torch.int64)
+    im = torch.ones(B, N * K, 512)
+    targets = 2 * torch.ones(B, N * K, dtype=torch.int64)
     inputs = (idx, text, im)
     im_embed, text_embed, lamdas = model(inputs)
-    print("output shapes (im, text, lamda)", im_embed.shape, text_embed.shape, lamdas.shape)
+    print("output shapes (im, text, lamda)", im_embed.shape, text_embed.shape,
+          lamdas.shape)
     prototypes = utils.get_prototypes(im_embed, text_embed, lamdas, targets, N)
     print("prototypes", prototypes.shape)
-    loss = utils.prototypical_loss(prototypes, im_embed, targets)   # test on train set
+    loss = utils.prototypical_loss(prototypes, im_embed,
+                                   targets)  # test on train set
     print("loss", loss)
     targets[:, 1] = 1
     preds, acc, f1, prec, rec = utils.get_preds(prototypes, im_embed, targets)
     print(preds)
-    
