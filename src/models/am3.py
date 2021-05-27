@@ -8,8 +8,8 @@ import torch.nn as nn
 from transformers import BertModel
 from tqdm.autonotebook import tqdm
 
-from ..utils import utils as utils
 from ..utils.average_meter import AverageMeter
+from ..utils import utils as utils
 from .common import WordEmbedding, RNN
 
 
