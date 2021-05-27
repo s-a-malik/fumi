@@ -8,7 +8,7 @@ from collections import OrderedDict
 from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
-from .. import utils.utils as utils
+from utils import utils as utils
 
 
 class PureImageNetwork(MetaModule):
