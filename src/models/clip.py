@@ -6,7 +6,8 @@ import torchvision.models as models
 import torch.utils.data as data
 
 import wandb
-from utils import utils as utils
+from ..utils import utils as utils
+from ..utils.average_meter import AverageMeter
 
 
 class CLIP(nn.Module):

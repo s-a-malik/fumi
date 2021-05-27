@@ -9,7 +9,8 @@ from transformers import BertModel
 from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
-from utils import utils as utils
+from ..utils import utils as utils
+from ..utils.average_meter import AverageMeter
 from .common import WordEmbedding
 
 
@@ -284,8 +285,8 @@ def test_loop(args, model, test_loader, max_num_batches):
     - avg_test_loss (float): average test loss per task
     """
 
-    avg_test_acc = utils.AverageMeter()
-    avg_test_loss = utils.AverageMeter()
+    avg_test_acc = AverageMeter()
+    avg_test_loss = AverageMeter()
     for batch_idx, batch in enumerate(
             tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
         test_loss, test_acc = model.evaluate(args=args,

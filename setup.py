@@ -29,6 +29,6 @@ setuptools.setup(
         "transformers==4.5.1",
     ],
     include_package_data=True,
-    packages=["zanim"],
+    packages=["src"],
     python_requires=">=3.6",
 )

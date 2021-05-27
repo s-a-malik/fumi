@@ -8,7 +8,8 @@ import torch.nn as nn
 from transformers import BertModel
 from tqdm.autonotebook import tqdm
 
-from .utils import utils as utils
+from ..utils import utils as utils
+from ..utils.average_meter import AverageMeter
 from .common import WordEmbedding, RNN
 
 
@@ -324,17 +325,17 @@ def test_loop(args, model, test_dataloader, max_num_batches):
     """
     # TODO need to fix number of tasks/episodes etc. depending on batch, num_ways etc.
 
-    avg_test_acc = utils.AverageMeter()
-    avg_test_f1 = utils.AverageMeter()
-    avg_test_prec = utils.AverageMeter()
-    avg_test_rec = utils.AverageMeter()
-    avg_test_loss = utils.AverageMeter()
+    avg_test_acc = AverageMeter()
+    avg_test_f1 = AverageMeter()
+    avg_test_prec = AverageMeter()
+    avg_test_rec = AverageMeter()
+    avg_test_loss = AverageMeter()
     test_preds = []
     test_trues = []
     query_idx = []
     support_idx = []
     support_lamdas = []
-    avg_lamda = utils.AverageMeter()
+    avg_lamda = AverageMeter()
 
     for batch_idx, batch in enumerate(
             tqdm(test_dataloader,
