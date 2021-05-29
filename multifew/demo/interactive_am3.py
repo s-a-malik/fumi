@@ -123,7 +123,25 @@ class AM3Explorer():
         self.test_true = np.array(test_true).reshape(-1)
         self.test_preds = np.array(test_preds).reshape(-1)
 
+        cindxs = [
+            self.data.cname_category_index_map[x] for x in [
+                self.common_name_area_1.value, self.common_name_area_2.value,
+                self.common_name_area_3.value, self.common_name_area_4.value,
+                self.common_name_area_5.value
+            ]
+        ]
+        fixed_test_preds = self.fix_mapping(cindxs, query_idx, test_preds)
+        fixed_test_true = self.fix_mapping(cindxs, query_idx, test_true)
+        accs = []
+        for i in range(5):
+            ids = fixed_test_true == i
+            acc = np.mean(fixed_test_preds[ids] == fixed_test_true[i])
+            accs.append(acc)
         self._show_am3_images()
+
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.bar(np.arange(0, 1, 5), accs, width=0.12)
+        plt.show()
 
     def _show_am3_images(self):
         ims = []
@@ -238,9 +256,9 @@ class AM3Explorer():
     def fix_mapping(self, cindxs, indxs, targets):
         ts = targets.copy()
         for ind, i in enumerate(indxs):
-            targets[ind] = cindxs.index(
+            ts[ind] = cindxs.index(
                 self.data.annotations['annotations'][i]['category_id'])
-        return targets
+        return ts
 
     def explore(self, c1, c2, c3, c4, c5):
         cindxs = [
