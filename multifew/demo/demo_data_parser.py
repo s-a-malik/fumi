@@ -37,3 +37,4 @@ class DemoDataParser():
 
         h5_file = h5py.File("/content/images.hdf5", 'r')
         self.images = h5_file['images']
+        self.annotations = annotations
