@@ -122,13 +122,14 @@ class AM3Explorer():
         self.query_idx = np.array(query_idx).reshape(-1)
         self.test_true = np.array(test_true).reshape(-1)
         self.test_preds = np.array(test_preds).reshape(-1)
-
+        common_names_selected = [
+            self.common_name_area_1.value, self.common_name_area_2.value,
+            self.common_name_area_3.value, self.common_name_area_4.value,
+            self.common_name_area_5.value
+        ]
         cindxs = [
-            self.data.cname_category_index_map[x] for x in [
-                self.common_name_area_1.value, self.common_name_area_2.value,
-                self.common_name_area_3.value, self.common_name_area_4.value,
-                self.common_name_area_5.value
-            ]
+            self.data.cname_category_index_map[x]
+            for x in common_names_selected
         ]
         fixed_test_preds = self.fix_mapping(cindxs, self.query_idx,
                                             self.test_preds)
@@ -141,8 +142,10 @@ class AM3Explorer():
             accs.append(acc)
         self._show_am3_images()
 
-        fig, ax = plt.subplots(figsize=(5, 5))
-        ax.bar(np.arange(0, 1, 5), accs, width=0.12)
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.bar(np.linspace(0, 1, 5), accs, width=0.12)
+        ax.set_xticks(common_names_selected)
+        ax.set_ylabel("Accuracy per species")
         plt.show()
 
     def _show_am3_images(self):
