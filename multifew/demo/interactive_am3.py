@@ -130,8 +130,10 @@ class AM3Explorer():
                 self.common_name_area_5.value
             ]
         ]
-        fixed_test_preds = self.fix_mapping(cindxs, query_idx, test_preds)
-        fixed_test_true = self.fix_mapping(cindxs, query_idx, test_true)
+        fixed_test_preds = self.fix_mapping(cindxs, self.query_idx,
+                                            self.test_preds)
+        fixed_test_true = self.fix_mapping(cindxs, self.query_idx,
+                                           self.test_true)
         accs = []
         for i in range(5):
             ids = fixed_test_true == i
