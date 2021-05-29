@@ -10,7 +10,7 @@ from PIL import Image
 import IPython
 import time
 import random
-from demo_data_parser import DemoDataParser
+from .demo_data_parser import DemoDataParser
 import io
 
 
