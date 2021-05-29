@@ -144,7 +144,7 @@ class AM3Explorer():
 
         fig, ax = plt.subplots(figsize=(8, 8))
         ax.bar(np.linspace(0, 1, 5), accs, width=0.12)
-        ax.set_xticks(common_names_selected)
+        ax.set_xticks(np.arange(5), common_names_selected)
         ax.set_ylabel("Accuracy per species")
         plt.show()
 
