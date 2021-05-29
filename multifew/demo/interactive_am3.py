@@ -144,9 +144,12 @@ class AM3Explorer():
         print(accs)
         mapping = []
         for i in range(5):
-            true_class = self.annotations['annotations'][self.query_idx[
+            true_class = self.data.annotations['annotations'][self.query_idx[
                 self.test_true == i][0]]['category_id']
-            mapping.append(cindxs.index(true_class))
+            try:
+                mapping.append(cindxs.index(true_class))
+            except:
+                pass
 
         accs = np.array(accs)
         accs = accs[mapping]
