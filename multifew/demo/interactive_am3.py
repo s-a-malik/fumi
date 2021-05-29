@@ -138,12 +138,13 @@ class AM3Explorer():
         accs = []
         for i in range(5):
             ids = fixed_test_true == i
-            acc = np.mean(fixed_test_preds[ids] == fixed_test_true[i])
+            acc = np.mean(fixed_test_preds[ids] == fixed_test_true[ids])
             accs.append(acc)
         self._show_am3_images()
+        print(accs)
 
-        fig, ax = plt.subplots(figsize=(8, 8))
-        ax.bar(np.arange(5), accs, width=0.8)
+        fig, ax = plt.subplots(figsize=(15, 8))
+        ax.bar(np.arange(5), accs, width=0.7)
         ax.set_xticks(np.arange(5))
         ax.set_xticklabels(common_names_selected)
         ax.set_ylabel("Accuracy per species")
