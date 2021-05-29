@@ -10,7 +10,7 @@ from PIL import Image
 import IPython
 import time
 import random
-from demo_json_parser import DemoDataParser
+from demo_data_parser import DemoDataParser
 import io
 
 
@@ -111,20 +111,18 @@ class DatasetExplorer():
         self.image.value = byte_im
 
     def explore(self, common_name):
-        base = 0
+        self.base = 0
         indxs = self.data.cname_image_index_map[common_name]
         start = time.time()
         frames = [
             np.hstack(self.data.images[indxs[start:min(start +
-                                                       col, len(indxs))]])
-            for start in range(0, row * col, col)
+                                                       self.col, len(indxs))]])
+            for start in range(0, self.row * self.col, self.col)
         ]
         frame = np.vstack(frames)
         start = time.time()
         frame = np.flip(frame, 2)
-        is_success, im_buf_arr = cv2.imencode(".jpg", frame)
+        _, im_buf_arr = cv2.imencode(".jpg", frame)
         byte_im = im_buf_arr.tobytes()
         self.image.value = byte_im
         self.description.value = self.data.cname_description_map[common_name]
-
-    display(ui, out, output)
