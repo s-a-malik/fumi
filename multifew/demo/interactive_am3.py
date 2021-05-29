@@ -25,6 +25,14 @@ from ..models import am3
 
 class AM3Explorer():
     def __init__(self, data: DemoDataParser):
+        plt.style.use('seaborn')
+        plt.rc('font', size=15)
+        plt.rc('xtick', labelsize='medium')
+        plt.rc('ytick', labelsize='medium')
+        plt.rc('xtick.major', size=5, width=1.5)
+        plt.rc('ytick.major', size=5, width=1.5)
+        plt.rc('axes', linewidth=2, labelsize='large', titlesize='large')
+        plt.rcParams["lines.markeredgewidth"] = 2
         args = [
             "--seed", "123", "--patience", "500", "--eval_freq", "30",
             "--epochs", "2000", "--optim", "adam", "--lr", "1e-4",
@@ -274,8 +282,11 @@ class AM3Explorer():
     def fix_mapping(self, cindxs, indxs, targets):
         ts = targets.copy()
         for ind, i in enumerate(indxs):
-            ts[ind] = cindxs.index(
-                self.data.annotations['annotations'][i]['category_id'])
+            try:
+                ts[ind] = cindxs.index(
+                    self.data.annotations['annotations'][i]['category_id'])
+            except:
+                pass
         return ts
 
     def explore(self, c1, c2, c3, c4, c5):
