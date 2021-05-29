@@ -111,10 +111,9 @@ class AM3Explorer():
             self.optimizer = utils.init_optim(self.args, self.model)
 
             print("Loading AM3 checkpoint")
-            model, optimizer = utils.load_checkpoint(self.model,
-                                                     self.optimizer,
-                                                     self.args.device,
-                                                     self.checkpoint_file.name)
+            self.model, self.optimizer = utils.load_checkpoint(
+                self.model, self.optimizer, self.args.device,
+                self.checkpoint_file.name)
 
         print("Running AM3 on test species")
         test_loss, test_acc, test_f1, test_prec, test_rec, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
@@ -125,13 +124,13 @@ class AM3Explorer():
         self.test_preds = np.array(test_preds).reshape(-1)
 
         self._show_am3_images()
-        return query_idx, support_idx, test_preds, test_true
 
     def _show_am3_images(self):
         ims = []
         for i in range(
                 self.base,
-                min(self.base + (self.row * self.col), len(self.query_idx))):
+                min(self.base + (self.row * self.col),
+                    self.query_idx.shape[0])):
             ims.append(
                 self.colour_image(self.test_preds[i], self.test_true[i],
                                   self.data.images[self.query_idx[i]]))
@@ -139,7 +138,7 @@ class AM3Explorer():
         frames = [
             np.hstack(ims[self.base +
                           start:min(self.base + start +
-                                    self.col, len(self.query_idx))])
+                                    self.col, self.query_idx.shape[0])])
             for start in range(0, self.row * self.col, self.col)
         ]
         # frames = [np.hstack(images[support_idx[start:min(start+col, len(support_idx))]]) for start in range(0,row*col,col)]
@@ -235,7 +234,7 @@ class AM3Explorer():
 
         if self.base == 0:
             self.back_button.disabled = True
-        if self.base > len(self.test_preds) - (2 * self.row * self.col):
+        if self.base > self.test_preds.shape[0] - (2 * self.row * self.col):
             self.next_button.disabled = True
 
     def fix_mapping(self, cindxs, indxs, targets):
