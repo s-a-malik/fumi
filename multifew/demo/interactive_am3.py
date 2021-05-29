@@ -3,7 +3,6 @@ import os
 import wandb
 from IPython.display import display
 from functools import partial
-from __future__ import print_function
 from ipywidgets import interact, interactive, fixed, interact_manual
 import ipywidgets as widgets
 import matplotlib.pyplot as plt
