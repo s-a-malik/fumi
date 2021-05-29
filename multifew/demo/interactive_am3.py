@@ -137,11 +137,19 @@ class AM3Explorer():
                                            self.test_true)
         accs = []
         for i in range(5):
-            ids = fixed_test_true == i
-            acc = np.mean(fixed_test_preds[ids] == fixed_test_true[ids])
+            ids = (self.test_true == i)
+            acc = np.mean(self.test_preds[ids] == self.test_true[ids])
             accs.append(acc)
         self._show_am3_images()
         print(accs)
+        mapping = []
+        for i in range(5):
+            true_class = self.annotations['annotations'][self.query_idx[
+                self.test_true == i][0]]['category_id']
+            mapping.append(cindxs.index(true_class))
+
+        accs = np.array(accs)
+        accs = accs[mapping]
 
         fig, ax = plt.subplots(figsize=(15, 8))
         ax.bar(np.arange(5), accs, width=0.7)
