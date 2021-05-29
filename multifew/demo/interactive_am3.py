@@ -136,10 +136,8 @@ class AM3Explorer():
                                   self.data.images[self.query_idx[i]]))
 
         frames = [
-            np.hstack(ims[self.base +
-                          start:min(self.base + start +
-                                    self.col, self.query_idx.shape[0])])
-            for start in range(0, self.row * self.col, self.col)
+            np.hstack(ims[start:min(start + self.col, len(ims))])
+            for start in range(0, min(self.row * self.col, len(ims)), self.col)
         ]
         # frames = [np.hstack(images[support_idx[start:min(start+col, len(support_idx))]]) for start in range(0,row*col,col)]
         frame = np.vstack(frames)
