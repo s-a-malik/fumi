@@ -79,6 +79,8 @@ class AM3Explorer():
             })
         self.row, self.col = 5, 5
         self.base = 0
+
+        self.run_am3_button.on_click(self.run_am3)
         display(ui, out)
 
     def gen_batch(self, species):
@@ -113,23 +115,8 @@ class AM3Explorer():
         ver = col * np.ones((image.shape[0], size, 3))
         return np.hstack([ver, image, ver])
 
-    def run_am3(self, test, test_loader, button):
-        if self.model is None:
-            self.model = utils.init_model(self.args, test.dictionary)
-            self.optimizer = utils.init_optim(self.args, self.model)
+    def run_am3(self, button):
 
-            print("Loading AM3 checkpoint")
-            self.model, self.optimizer = utils.load_checkpoint(
-                self.model, self.optimizer, self.args.device,
-                self.checkpoint_file.name)
-
-        print("Running AM3 on test species")
-        test_loss, test_acc, test_f1, test_prec, test_rec, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
-            self.args, self.model, test_loader, self.args.max_test_batches)
-
-        self.query_idx = np.array(query_idx).reshape(-1)
-        self.test_true = np.array(test_true).reshape(-1)
-        self.test_preds = np.array(test_preds).reshape(-1)
         common_names_selected = [
             self.common_name_area_1.value, self.common_name_area_2.value,
             self.common_name_area_3.value, self.common_name_area_4.value,
@@ -139,6 +126,15 @@ class AM3Explorer():
             self.data.cname_category_index_map[x]
             for x in common_names_selected
         ]
+        # test, test_loader = self.gen_batch(cindxs)
+        print("Running AM3 on test species")
+        test_loss, test_acc, test_f1, test_prec, test_rec, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
+            self.args, self.model, self.test_loader,
+            self.args.max_test_batches)
+
+        self.query_idx = np.array(query_idx).reshape(-1)
+        self.test_true = np.array(test_true).reshape(-1)
+        self.test_preds = np.array(test_preds).reshape(-1)
         fixed_test_preds = self.fix_mapping(cindxs, self.query_idx,
                                             self.test_preds)
         fixed_test_true = self.fix_mapping(cindxs, self.query_idx,
@@ -297,9 +293,19 @@ class AM3Explorer():
             self.data.cname_category_index_map[x]
             for x in [c1, c2, c3, c4, c5]
         ]
-        test, test_loader = self.gen_batch(cindxs)
-        self.run_am3_button.on_click(partial(self.run_am3, test, test_loader))
-        for z in test_loader:
+        self.test, self.test_loader = self.gen_batch(cindxs)
+
+        if self.model is None:
+            print("Loading AM3 checkpoint")
+            self.model = utils.init_model(self.args, self.test.dictionary)
+            self.optimizer = utils.init_optim(self.args, self.model)
+
+            self.model, self.optimizer = utils.load_checkpoint(
+                self.model, self.optimizer, self.args.device,
+                self.checkpoint_file.name)
+            print("Finished loading AM3 checkpoint")
+        # self.run_am3_button.on_click(partial(self.run_am3, test, test_loader))
+        for z in self.test_loader:
             indxs = z['train'][0][0].numpy().reshape(-1)
             targets = z['train'][1][0].numpy().reshape(-1)
         sorted_indxs = np.sort(indxs)
