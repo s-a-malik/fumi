@@ -166,7 +166,7 @@ class AM3Explorer():
         # accs = accs[mapping]
 
         fig, ax = plt.subplots(figsize=(15, 8))
-        ax.bar(np.arange(5), accs, width=0.7)
+        ax.bar(np.arange(5), accs_fixed, width=0.7)
         ax.set_xticks(np.arange(5))
         ax.set_xticklabels(common_names_selected)
         ax.set_ylabel("Accuracy per species")
