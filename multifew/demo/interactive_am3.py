@@ -160,7 +160,10 @@ class AM3Explorer():
                 pass
 
         accs = np.array(accs)
-        accs = accs[mapping]
+        accs_fixed = accs.copy()
+        for ind, j in enumerate(mapping):
+            accs_fixed[j] = accs[ind]
+        # accs = accs[mapping]
 
         fig, ax = plt.subplots(figsize=(15, 8))
         ax.bar(np.arange(5), accs, width=0.7)
