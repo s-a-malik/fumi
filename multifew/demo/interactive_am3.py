@@ -79,19 +79,22 @@ class AM3Explorer():
         self.fumi_args = fumi_args
 
         os.environ['WANDB_SILENT'] = "true"
-        self.checkpoint_files = []
-        for i in range(2):
-            a = self.args if i == 0 else self.fumi_args
-            wandb.init(entity="multimodal-image-cls",
-                       project=a.model,
-                       group=a.experiment,
-                       save_code=True)
-            self.checkpoint_files.append(
-                wandb.restore(
-                    "best.pth.tar",
-                    run_path=
-                    f"multimodal-image-cls/{models[i]}/{checkpoints[i]}",
-                    root=model_paths[i]))
+        wandb.init(entity="multimodal-image-cls",
+                   project=self.args.model,
+                   group=self.args.experiment,
+                   save_code=True)
+        self.am3_checkpoint_file = wandb.restore(
+            "best.pth.tar",
+            run_path=f"multimodal-image-cls/{models[0]}/{checkpoints[0]}",
+            root=model_paths[0])
+        wandb.init(entity="multimodal-image-cls",
+                   project=self.fumi_args.model,
+                   group=self.fumi_args.experiment,
+                   save_code=True)
+        self.fumi_checkpoint_file = wandb.restore(
+            "best.pth.tar",
+            run_path=f"multimodal-image-cls/{models[1]}/{checkpoints[1]}",
+            root=model_paths[1])
 
         # generate a fake batch to get the description dictionary (i.e. the tokens)
         test, _ = self.gen_batch([1, 2, 3, 4, 5])
@@ -102,7 +105,7 @@ class AM3Explorer():
 
         self.am3_model, self.am3_optimizer = utils.load_checkpoint(
             self.am3_model, self.am3_optimizer, self.args.device,
-            self.checkpoint_files[0])
+            self.am3_checkpoint_file)
         print("Finished loading AM3 checkpoint")
         print("Loading FUMI checkpoint")
         self.fumi_model = utils.init_model(fumi_args, test.dictionary)
@@ -110,7 +113,7 @@ class AM3Explorer():
 
         self.fumi_model, self.fumi_optimizer = utils.load_checkpoint(
             self.fumi_model, self.fumi_optimizer, self.fumi_args.device,
-            self.checkpoint_files[1])
+            self.fumi_checkpoint_file)
         print("Finished loading FUMI checkpoint")
         ui = self.construct_interface()
         out = widgets.interactive_output(
