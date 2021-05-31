@@ -79,16 +79,19 @@ class AM3Explorer():
         self.fumi_args = fumi_args
 
         os.environ['WANDB_SILENT'] = "true"
+        self.checkpoint_files = []
         for i in range(2):
             a = self.args if i == 0 else self.fumi_args
             wandb.init(entity="multimodal-image-cls",
                        project=a.model,
                        group=a.experiment,
                        save_code=True)
-            wandb.restore(
-                "best.pth.tar",
-                run_path=f"multimodal-image-cls/{models[i]}/{checkpoints[i]}",
-                root=model_paths[i])
+            self.checkpoint_files.append(
+                wandb.restore(
+                    "best.pth.tar",
+                    run_path=
+                    f"multimodal-image-cls/{models[i]}/{checkpoints[i]}",
+                    root=model_paths[i]))
 
         # generate a fake batch to get the description dictionary (i.e. the tokens)
         test, _ = self.gen_batch([1, 2, 3, 4, 5])
