@@ -110,6 +110,7 @@ class AM3Explorer():
             self.am3_checkpoint_file.name)
         print("Finished loading AM3 checkpoint")
         print("Loading FUMI checkpoint")
+        test, _ = self.gen_batch([1, 2, 3, 4, 5], stop_words=True)
         self.fumi_model = utils.init_model(fumi_args, test.dictionary)
         self.fumi_optimizer = utils.init_optim(fumi_args, self.fumi_model)
 
@@ -132,7 +133,7 @@ class AM3Explorer():
         self.run_am3_button.on_click(self.run_am3)
         display(ui, out)
 
-    def gen_batch(self, species):
+    def gen_batch(self, species, stop_words=False):
         test = Zanim(root="/content/",
                      json_path="train.json",
                      num_classes_per_task=5,
@@ -142,7 +143,7 @@ class AM3Explorer():
                          DescriptionMode.FULL_DESCRIPTION,
                          DescriptionMode.COMMON_NAME
                      ],
-                     remove_stop_words=False,
+                     remove_stop_words=stop_words,
                      image_embedding_model="resnet-152",
                      categories=species)
         test_split = ClassSplitter(test,
