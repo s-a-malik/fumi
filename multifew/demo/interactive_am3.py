@@ -73,16 +73,18 @@ class AM3Explorer():
         args.num_ways = 5
         self.args = args
 
-        fumi_args = parser.parse_args(fumi_args)
+        fumi_args = utils.parser().parse_args(fumi_args)
         fumi_args.device = torch.device(
             "cuda") if torch.cuda.is_available() else torch.device("cpu")
+        fumi_args.max_test_batches = 1000
+        fumi_args.num_ways = 5
         self.fumi_args = fumi_args
 
         os.environ['WANDB_SILENT'] = "true"
         wandb.init(entity="multimodal-image-cls",
                    project=self.args.model,
                    group=self.args.experiment,
-                   save_code=True)
+                   save_code=False)
         self.am3_checkpoint_file = wandb.restore(
             "best.pth.tar",
             run_path=f"multimodal-image-cls/{models[0]}/{checkpoints[0]}",
@@ -90,7 +92,7 @@ class AM3Explorer():
         wandb.init(entity="multimodal-image-cls",
                    project=self.fumi_args.model,
                    group=self.fumi_args.experiment,
-                   save_code=True)
+                   save_code=False)
         self.fumi_checkpoint_file = wandb.restore(
             "best.pth.tar",
             run_path=f"multimodal-image-cls/{models[1]}/{checkpoints[1]}",
@@ -105,7 +107,7 @@ class AM3Explorer():
 
         self.am3_model, self.am3_optimizer = utils.load_checkpoint(
             self.am3_model, self.am3_optimizer, self.args.device,
-            self.am3_checkpoint_file)
+            self.am3_checkpoint_file.name)
         print("Finished loading AM3 checkpoint")
         print("Loading FUMI checkpoint")
         self.fumi_model = utils.init_model(fumi_args, test.dictionary)
@@ -113,7 +115,7 @@ class AM3Explorer():
 
         self.fumi_model, self.fumi_optimizer = utils.load_checkpoint(
             self.fumi_model, self.fumi_optimizer, self.fumi_args.device,
-            self.fumi_checkpoint_file)
+            self.fumi_checkpoint_file.name)
         print("Finished loading FUMI checkpoint")
         ui = self.construct_interface()
         out = widgets.interactive_output(
