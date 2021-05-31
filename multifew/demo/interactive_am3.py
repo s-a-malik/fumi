@@ -110,7 +110,9 @@ class AM3Explorer():
             self.am3_checkpoint_file.name)
         print("Finished loading AM3 checkpoint")
         print("Loading FUMI checkpoint")
-        test, _ = self.gen_batch([1, 2, 3, 4, 5], stop_words=True)
+        test, _ = self.gen_batch([1, 2, 3, 4, 5],
+                                 stop_words=True,
+                                 common_name=False)
         self.fumi_model = utils.init_model(fumi_args, test.dictionary)
         self.fumi_optimizer = utils.init_optim(fumi_args, self.fumi_model)
 
@@ -133,16 +135,16 @@ class AM3Explorer():
         self.run_am3_button.on_click(self.run_am3)
         display(ui, out)
 
-    def gen_batch(self, species, stop_words=False):
+    def gen_batch(self, species, stop_words=False, common_name=True):
+        dmode = [DescriptionMode.FULL_DESCRIPTION]
+        if common_name:
+            dmode = dmode + [DescriptionMode.COMMON_NAME]
         test = Zanim(root="/content/",
                      json_path="train.json",
                      num_classes_per_task=5,
                      meta_test=True,
                      tokenisation_mode=TokenisationMode.STANDARD,
-                     description_mode=[
-                         DescriptionMode.FULL_DESCRIPTION,
-                         DescriptionMode.COMMON_NAME
-                     ],
+                     description_mode=dmode,
                      remove_stop_words=stop_words,
                      image_embedding_model="resnet-152",
                      categories=species)
@@ -183,10 +185,10 @@ class AM3Explorer():
         # test, test_loader = self.gen_batch(cindxs)
         print("Running AM3 on test species")
         test_loss, test_acc, test_f1, test_prec, test_rec, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
-            self.args, self.am3_model, self.test_loader,
+            self.args, self.am3_model, self.am3_test_loader,
             self.args.max_test_batches)
         _, _, fumi_preds, _ = fumi.test_loop(self.fumi_args, self.fumi_model,
-                                             self.test_loader,
+                                             self.fumi_test_loader,
                                              self.args.max_test_batches)
         self.query_idx = np.array(query_idx).reshape(-1)
         self.test_targets = np.array(test_true).reshape(-1)
@@ -355,10 +357,12 @@ class AM3Explorer():
             self.data.cname_category_index_map[x]
             for x in [c1, c2, c3, c4, c5]
         ]
-        self.test, self.test_loader = self.gen_batch(cindxs)
+        self.am3_test, self.am3_test_loader = self.gen_batch(cindxs)
+        self.fumi_test, self.fumi_test_loader = self.gen_batch(
+            cindxs, common_name=False, stop_words=True)
 
         # self.run_am3_button.on_click(partial(self.run_am3, test, test_loader))
-        for z in self.test_loader:
+        for z in self.am3_test_loader:
             indxs = z['train'][0][0].numpy().reshape(-1)
             targets = z['train'][1][0].numpy().reshape(-1)
         sorted_indxs = np.sort(indxs)
