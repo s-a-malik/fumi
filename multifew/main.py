@@ -99,8 +99,9 @@ def main(args):
             test_loss, test_acc = maml.test_loop(args, model, test_loader,
                                                  max_test_batches)
         else:
-            test_loss, test_acc = fumi.test_loop(args, model, test_loader,
-                                                 max_test_batches)
+            test_loss, test_acc, _, _ = fumi.test_loop(args, model,
+                                                       test_loader,
+                                                       max_test_batches)
         print(f"\n TEST: \ntest loss: {test_loss}, test acc: {test_acc}")
 
         wandb.log({"test/acc": test_acc, "test/loss": test_loss})

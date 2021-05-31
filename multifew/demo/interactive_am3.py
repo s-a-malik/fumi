@@ -20,7 +20,7 @@ from torchmeta.utils.data import (BatchMetaDataLoader, ClassDataset,
                                   CombinationMetaDataset, Dataset)
 from ..utils import utils
 from ..dataset.data import Zanim, TokenisationMode, DescriptionMode
-from ..models import am3
+from ..models import am3, fumi
 
 
 class AM3Explorer():
@@ -44,11 +44,30 @@ class AM3Explorer():
             "description common_name", "--text_emb_dim", "768",
             "--text_hid_dim", "512", "--prototype_dim", "512"
         ]
+        fumi_args = [
+            '--dataset', 'zanim', '--data_dir', '"/content/drive/My',
+            'Drive/NLP', 'project/Dataset"', '--log_dir', '"/content/drive/My',
+            'Drive/NLP', 'project/Code/fumi"', '--model', 'fumi',
+            '--experiment', 'eval', '--seed', '123', '--patience', '10000',
+            '--eval_freq', '500', '--epochs', '50000', '--optim', 'adam',
+            '--lr', '1e-4', '--weight_decay', '0.0005', '--batch_size', '2',
+            '--num_shots', '5', '--num_ways', '5', '--num_shots_test', '8',
+            '--num_ep_test', '250', '--im_encoder', 'precomputed',
+            '--image_embedding_model', 'resnet-152', '--im_emb_dim', '2048',
+            '--im_hid_dim', '64', '--text_encoder', 'glove', '--pooling_strat',
+            'mean', '--remove_stop_words', '--text_type', 'description',
+            '--text_emb_dim', '768', '--text_hid_dim', '256', '--step_size',
+            '0.01', '--num_train_adapt_steps', '5', '--num_test_adapt_steps',
+            '25', '--shared_feats', '--checkpoint', '249ovl3w', '--evaluate'
+        ]
         self.data = data
-        model, checkpoint = "am3", "6ze2cjev"
-        model_path = f"./checkpoints/{model}/{checkpoint}"
+        models, checkpoints = ["am3", "fumi"], ["6ze2cjev", "249ovl3w"]
+        model_paths = [
+            f"./checkpoints/{m}/{c}" for (m, c) in zip(models, checkpoints)
+        ]
         # init model and optimiser
-        os.makedirs(model_path, exist_ok=True)
+        os.makedirs(model_paths[0], exist_ok=True)
+        os.makedirs(model_paths[1], exist_ok=True)
         parser = utils.parser()
         args = parser.parse_args(args)
         args.device = torch.device(
@@ -56,18 +75,45 @@ class AM3Explorer():
         args.max_test_batches = 1000
         args.num_ways = 5
         self.args = args
+
+        fumi_args = parser.parse_args(fumi_args)
+        fumi_args.device = torch.device(
+            "cuda") if torch.cuda.is_available() else torch.device("cpu")
+        self.fumi_args = fumi_args
+        # generate a fake batch to get the description dictionary (i.e. the tokens)
+        test, _ = self.gen_batch([1, 2, 3, 4, 5])
+
         os.environ['WANDB_SILENT'] = "true"
-        self.run = wandb.init(
-            entity="multimodal-image-cls",
-            project=args.model,
-            group=args.experiment,
-            # mode='offline',
-            save_code=True)
-        self.checkpoint_file = wandb.restore(
-            "best.pth.tar",
-            run_path=f"multimodal-image-cls/{model}/{checkpoint}",
-            root=model_path)
-        self.model, self.optimizer = None, None
+        self.runs = [
+            wandb.init(entity="multimodal-image-cls",
+                       project=a.model,
+                       group=a.experiment,
+                       save_code=True) for a in [self.args, self.fumi_args]
+        ]
+        self.checkpoint_files = [
+            wandb.restore("best.pth.tar",
+                          run_path=f"multimodal-image-cls/{m}/{c}",
+                          root=mp)
+            for (m, c, mp) in zip(models, checkpoints, model_paths)
+        ]
+
+        # load AM3 and FUMI checkpoint
+        print("Loading AM3 checkpoint")
+        self.am3_model = utils.init_model(self.args, test.dictionary)
+        self.am3_optimizer = utils.init_optim(self.args, self.model)
+
+        self.am3_model, self.am3_optimizer = utils.load_checkpoint(
+            self.am3_model, self.am3_optimizer, self.args.device,
+            self.checkpoint_files[0])
+        print("Finished loading AM3 checkpoint")
+        print("Loading FUMI checkpoint")
+        self.fumi_model = utils.init_model(fumi_args, test.dictionary)
+        self.fumi_optimizer = utils.init_optim(fumi_args, self.fumi_model)
+
+        self.fumi_model, self.fumi_optimizer = utils.load_checkpoint(
+            self.fumi_model, self.fumi_optimizer, self.fumi_args.device,
+            self.checkpoint_files[1])
+        print("Finished loading FUMI checkpoint")
         ui = self.construct_interface()
         out = widgets.interactive_output(
             self.explore, {
@@ -106,14 +152,18 @@ class AM3Explorer():
                                           num_workers=1)
         return test, test_loader
 
-    def colour_image(self, pred, y_true, image):
+    def colour_image(self, am3_pred, fumi_pred, y_true, image):
         size = 8
-        col = np.array([0, 255, 0]) if pred == y_true else np.array(
+        col_a = np.array([0, 255, 0]) if am3_pred == y_true else np.array(
             [255, 0, 0])
-        hor = col * np.ones((size, image.shape[1], 3))
+        col_f = np.array([0, 255, 0]) if fumi_pred == y_true else np.array(
+            [255, 0, 0])
+        hor = np.ones((size, image.shape[1] // 2, 3))
+        hor = np.hstack(col_a * hor, col_f * hor)
         image = np.vstack([hor, image, hor])
-        ver = col * np.ones((image.shape[0], size, 3))
-        return np.hstack([ver, image, ver])
+        ver_a = col_a * np.ones((image.shape[0], size, 3))
+        ver_f = col_f * np.ones((image.shape[0], size, 3))
+        return np.hstack([ver_a, image, ver_f])
 
     def run_am3(self, button):
 
@@ -129,40 +179,46 @@ class AM3Explorer():
         # test, test_loader = self.gen_batch(cindxs)
         print("Running AM3 on test species")
         test_loss, test_acc, test_f1, test_prec, test_rec, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
-            self.args, self.model, self.test_loader,
+            self.args, self.am3_model, self.test_loader,
             self.args.max_test_batches)
-
+        _, _, fumi_preds, _ = fumi.test_loop(self.fumi_args, self.fumi_model,
+                                             self.test_loader,
+                                             self.args.max_test_batches)
         self.query_idx = np.array(query_idx).reshape(-1)
-        self.test_true = np.array(test_true).reshape(-1)
-        self.test_preds = np.array(test_preds).reshape(-1)
-        fixed_test_preds = self.fix_mapping(cindxs, self.query_idx,
-                                            self.test_preds)
-        fixed_test_true = self.fix_mapping(cindxs, self.query_idx,
-                                           self.test_true)
-        accs = []
+        self.test_targets = np.array(test_true).reshape(-1)
+        self.am3_test_preds = np.array(test_preds).reshape(-1)
+        self.fumi_test_preds = np.array(fumi_preds).reshape(-1)
+        am3_accs = []
+        fumi_accs = []
         for i in range(5):
-            ids = (self.test_true == i)
-            acc = np.mean(self.test_preds[ids] == self.test_true[ids])
-            accs.append(acc)
+            ids = (self.test_targets == i)
+            am3_acc = np.mean(
+                self.am3_test_preds[ids] == self.test_targets[ids])
+            fumi_acc = np.mean(
+                self.fumi_test_preds[ids] == self.test_targets[ids])
+            am3_accs.append(am3_acc)
+            fumi_accs.append(fumi_acc)
         self._show_am3_images()
-        print(accs)
         mapping = []
         for i in range(5):
             true_class = self.data.annotations['annotations'][self.query_idx[
-                self.test_true == i][0]]['category_id']
+                self.test_targets == i][0]]['category_id']
             try:
                 mapping.append(cindxs.index(true_class))
             except:
                 pass
 
-        accs = np.array(accs)
-        accs_fixed = accs.copy()
+        am3_accs = np.array(am3_accs)
+        fumi_accs = np.array(fumi_accs)
+        am3_accs_fixed = am3_accs.copy()
+        fumi_accs_fixed = fumi_accs.copy()
         for ind, j in enumerate(mapping):
-            accs_fixed[j] = accs[ind]
-        # accs = accs[mapping]
+            am3_accs_fixed[j] = am3_accs[ind]
+            fumi_accs_fixed[j] = fumi_accs[ind]
 
         fig, ax = plt.subplots(figsize=(15, 8))
-        ax.bar(np.arange(5), accs_fixed, width=0.7)
+        ax.bar(np.arange(5), am3_accs_fixed, width=0.35)
+        ax.bar(np.arange(5) + 0.35, fumi_accs_fixed, width=0.35)
         ax.set_xticks(np.arange(5))
         ax.set_xticklabels(common_names_selected)
         ax.set_ylabel("Accuracy per species")
@@ -175,7 +231,9 @@ class AM3Explorer():
                 min(self.base + (self.row * self.col),
                     self.query_idx.shape[0])):
             ims.append(
-                self.colour_image(self.test_preds[i], self.test_true[i],
+                self.colour_image(self.am3_test_preds[i],
+                                  self.fumi_test_preds[i],
+                                  self.test_targets[i],
                                   self.data.images[self.query_idx[i]]))
 
         frames = [
@@ -295,15 +353,6 @@ class AM3Explorer():
         ]
         self.test, self.test_loader = self.gen_batch(cindxs)
 
-        if self.model is None:
-            print("Loading AM3 checkpoint")
-            self.model = utils.init_model(self.args, self.test.dictionary)
-            self.optimizer = utils.init_optim(self.args, self.model)
-
-            self.model, self.optimizer = utils.load_checkpoint(
-                self.model, self.optimizer, self.args.device,
-                self.checkpoint_file.name)
-            print("Finished loading AM3 checkpoint")
         # self.run_am3_button.on_click(partial(self.run_am3, test, test_loader))
         for z in self.test_loader:
             indxs = z['train'][0][0].numpy().reshape(-1)

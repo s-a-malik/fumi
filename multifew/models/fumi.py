@@ -123,6 +123,7 @@ class FUMI(nn.Module):
         test_inputs = [x.to(args.device) for x in test_inputs]
         # test_inputs = test_inputs[3].to(device=args.device)
         test_targets = test_targets.to(device=args.device)
+        test_preds = torch.zeros(test_targets.shape).to(device=args.device)
 
         # Unpack input
         if self.text_encoder_type == "BERT":
@@ -159,6 +160,8 @@ class FUMI(nn.Module):
                 im_params -= args.step_size * grads[0]
 
             test_logit = self.im_forward(test_imss[task_idx], im_params)
+            test_preds[task_idx] = test_logit.max(dim=-1)
+
             outer_loss += F.cross_entropy(test_logit, test_target)
 
             with torch.no_grad():
@@ -173,7 +176,7 @@ class FUMI(nn.Module):
             optimizer.step()
 
         return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu(
-        ).numpy()
+        ).numpy(), test_preds, test_targets
 
     def get_im_params(self, text, targets, device, attn_mask=None):
         NK, seq_len = text.shape
@@ -287,17 +290,21 @@ def test_loop(args, model, test_loader, max_num_batches):
 
     avg_test_acc = AverageMeter()
     avg_test_loss = AverageMeter()
+    test_preds = []
+    test_targets = []
     for batch_idx, batch in enumerate(
             tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
-        test_loss, test_acc = model.evaluate(args=args,
-                                             batch=batch,
-                                             optimizer=None,
-                                             task="test")
+        test_loss, test_acc, preds, target = model.evaluate(args=args,
+                                                            batch=batch,
+                                                            optimizer=None,
+                                                            task="test")
         avg_test_acc.update(test_acc)
         avg_test_loss.update(test_loss)
+        test_preds.append(preds)
+        test_targets.append(target)
         if batch_idx > max_num_batches - 1:
             break
-    return avg_test_loss.avg, avg_test_acc.avg
+    return avg_test_loss.avg, avg_test_acc.avg, test_preds, test_targets
 
 
 def get_accuracy(logits, targets):
