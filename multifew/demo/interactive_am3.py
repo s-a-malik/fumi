@@ -78,8 +78,6 @@ class AM3Explorer():
         fumi_args.device = torch.device(
             "cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.fumi_args = fumi_args
-        # generate a fake batch to get the description dictionary (i.e. the tokens)
-        test, _ = self.gen_batch([1, 2, 3, 4, 5])
 
         os.environ['WANDB_SILENT'] = "true"
         self.runs = [
@@ -95,10 +93,12 @@ class AM3Explorer():
             for (m, c, mp) in zip(models, checkpoints, model_paths)
         ]
 
+        # generate a fake batch to get the description dictionary (i.e. the tokens)
+        test, _ = self.gen_batch([1, 2, 3, 4, 5])
         # load AM3 and FUMI checkpoint
         print("Loading AM3 checkpoint")
         self.am3_model = utils.init_model(self.args, test.dictionary)
-        self.am3_optimizer = utils.init_optim(self.args, self.model)
+        self.am3_optimizer = utils.init_optim(self.args, self.am3_model)
 
         self.am3_model, self.am3_optimizer = utils.load_checkpoint(
             self.am3_model, self.am3_optimizer, self.args.device,
@@ -331,7 +331,7 @@ class AM3Explorer():
 
         if self.base == 0:
             self.back_button.disabled = True
-        if self.base > self.test_preds.shape[0] - (2 * self.row * self.col):
+        if self.base > self.test_targets.shape[0] - (2 * self.row * self.col):
             self.next_button.disabled = True
 
     def fix_mapping(self, cindxs, indxs, targets):
