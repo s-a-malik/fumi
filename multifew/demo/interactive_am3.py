@@ -45,18 +45,17 @@ class AM3Explorer():
             "--text_hid_dim", "512", "--prototype_dim", "512"
         ]
         fumi_args = [
-            '--model', 'fumi', '--experiment', 'eval', '--seed', '123',
-            '--patience', '10000', '--eval_freq', '500', '--epochs', '50000',
-            '--optim', 'adam', '--lr', '1e-4', '--weight_decay', '0.0005',
-            '--batch_size', '2', '--num_shots', '5', '--num_ways', '5',
-            '--num_shots_test', '8', '--num_ep_test', '250', '--im_encoder',
-            'precomputed', '--image_embedding_model', 'resnet-152',
-            '--im_emb_dim', '2048', '--im_hid_dim', '64', '--text_encoder',
-            'glove', '--pooling_strat', 'mean', '--remove_stop_words',
-            '--text_type', 'description', '--text_emb_dim', '768',
-            '--text_hid_dim', '256', '--step_size', '0.01',
-            '--num_train_adapt_steps', '5', '--num_test_adapt_steps', '25',
-            '--shared_feats', '--checkpoint', '249ovl3w', '--evaluate'
+            '--model', 'fumi', '--seed', '123', '--patience', '10000',
+            '--eval_freq', '500', '--epochs', '50000', '--optim', 'adam',
+            '--lr', '1e-4', '--weight_decay', '0.0005', '--batch_size', '2',
+            '--num_shots', '5', '--num_ways', '5', '--num_shots_test', '8',
+            '--num_ep_test', '250', '--im_encoder', 'precomputed',
+            '--image_embedding_model', 'resnet-152', '--im_emb_dim', '2048',
+            '--im_hid_dim', '64', '--text_encoder', 'glove', '--pooling_strat',
+            'mean', '--remove_stop_words', '--text_type', 'description',
+            '--text_emb_dim', '768', '--text_hid_dim', '256', '--step_size',
+            '0.01', '--num_train_adapt_steps', '5', '--num_test_adapt_steps',
+            '25', '--shared_feats', '--checkpoint', '249ovl3w', '--evaluate'
         ]
         self.data = data
         models, checkpoints = ["am3", "fumi"], ["6ze2cjev", "249ovl3w"]
@@ -80,18 +79,16 @@ class AM3Explorer():
         self.fumi_args = fumi_args
 
         os.environ['WANDB_SILENT'] = "true"
-        self.runs = [
+        for i in range(2):
+            a = self.args if i == 0 else self.fumi_args
             wandb.init(entity="multimodal-image-cls",
                        project=a.model,
                        group=a.experiment,
-                       save_code=True) for a in [self.args, self.fumi_args]
-        ]
-        self.checkpoint_files = [
-            wandb.restore("best.pth.tar",
-                          run_path=f"multimodal-image-cls/{m}/{c}",
-                          root=mp)
-            for (m, c, mp) in zip(models, checkpoints, model_paths)
-        ]
+                       save_code=True)
+            wandb.restore(
+                "best.pth.tar",
+                run_path=f"multimodal-image-cls/{models[i]}/{checkpoints[i]}",
+                root=model_paths[i])
 
         # generate a fake batch to get the description dictionary (i.e. the tokens)
         test, _ = self.gen_batch([1, 2, 3, 4, 5])
