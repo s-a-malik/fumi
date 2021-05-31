@@ -160,7 +160,7 @@ class FUMI(nn.Module):
                 im_params -= args.step_size * grads[0]
 
             test_logit = self.im_forward(test_imss[task_idx], im_params)
-            test_preds[task_idx] = test_logit.max(dim=-1)
+            _, test_preds[task_idx] = test_logit.max(dim=-1)
 
             outer_loss += F.cross_entropy(test_logit, test_target)
 
