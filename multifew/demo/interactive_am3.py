@@ -45,20 +45,18 @@ class AM3Explorer():
             "--text_hid_dim", "512", "--prototype_dim", "512"
         ]
         fumi_args = [
-            '--dataset', 'zanim', '--data_dir', '"/content/drive/My',
-            'Drive/NLP', 'project/Dataset"', '--log_dir', '"/content/drive/My',
-            'Drive/NLP', 'project/Code/fumi"', '--model', 'fumi',
-            '--experiment', 'eval', '--seed', '123', '--patience', '10000',
-            '--eval_freq', '500', '--epochs', '50000', '--optim', 'adam',
-            '--lr', '1e-4', '--weight_decay', '0.0005', '--batch_size', '2',
-            '--num_shots', '5', '--num_ways', '5', '--num_shots_test', '8',
-            '--num_ep_test', '250', '--im_encoder', 'precomputed',
-            '--image_embedding_model', 'resnet-152', '--im_emb_dim', '2048',
-            '--im_hid_dim', '64', '--text_encoder', 'glove', '--pooling_strat',
-            'mean', '--remove_stop_words', '--text_type', 'description',
-            '--text_emb_dim', '768', '--text_hid_dim', '256', '--step_size',
-            '0.01', '--num_train_adapt_steps', '5', '--num_test_adapt_steps',
-            '25', '--shared_feats', '--checkpoint', '249ovl3w', '--evaluate'
+            '--model', 'fumi', '--experiment', 'eval', '--seed', '123',
+            '--patience', '10000', '--eval_freq', '500', '--epochs', '50000',
+            '--optim', 'adam', '--lr', '1e-4', '--weight_decay', '0.0005',
+            '--batch_size', '2', '--num_shots', '5', '--num_ways', '5',
+            '--num_shots_test', '8', '--num_ep_test', '250', '--im_encoder',
+            'precomputed', '--image_embedding_model', 'resnet-152',
+            '--im_emb_dim', '2048', '--im_hid_dim', '64', '--text_encoder',
+            'glove', '--pooling_strat', 'mean', '--remove_stop_words',
+            '--text_type', 'description', '--text_emb_dim', '768',
+            '--text_hid_dim', '256', '--step_size', '0.01',
+            '--num_train_adapt_steps', '5', '--num_test_adapt_steps', '25',
+            '--shared_feats', '--checkpoint', '249ovl3w', '--evaluate'
         ]
         self.data = data
         models, checkpoints = ["am3", "fumi"], ["6ze2cjev", "249ovl3w"]
