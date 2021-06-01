@@ -81,18 +81,10 @@ class AM3Explorer():
         self.fumi_args = fumi_args
 
         os.environ['WANDB_SILENT'] = "true"
-        wandb.init(entity="multimodal-image-cls",
-                   project=self.args.model,
-                   group=self.args.experiment,
-                   save_code=False)
         self.am3_checkpoint_file = wandb.restore(
             "best.pth.tar",
             run_path=f"multimodal-image-cls/{models[0]}/{checkpoints[0]}",
             root=model_paths[0])
-        wandb.init(entity="multimodal-image-cls",
-                   project=self.fumi_args.model,
-                   group=self.fumi_args.experiment,
-                   save_code=False)
         self.fumi_checkpoint_file = wandb.restore(
             "best.pth.tar",
             run_path=f"multimodal-image-cls/{models[1]}/{checkpoints[1]}",
