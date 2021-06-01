@@ -149,27 +149,38 @@ class AM3Explorer():
                      image_embedding_model="resnet-152",
                      categories=species)
         test_split = ClassSplitter(test,
-                                   shuffle=True,
+                                   shuffle=False,
                                    num_test_per_class=int(100 / 5),
                                    num_train_per_class=5)
+        test_split.zero()
         test_loader = BatchMetaDataLoader(test_split,
                                           batch_size=2,
-                                          shuffle=True,
+                                          shuffle=False,
                                           num_workers=1)
         return test, test_loader
 
-    def colour_image(self, am3_pred, fumi_pred, y_true, image):
+    def colour_image(self, am3_pred, fumi_pred, y_true, y_true_targets, image):
         size = 8
         col_a = np.array([0, 255, 0]) if am3_pred == y_true else np.array(
             [255, 0, 0])
-        col_f = np.array([0, 255, 0]) if fumi_pred == y_true else np.array(
-            [255, 0, 0])
+        col_f = np.array([
+            0, 255, 0
+        ]) if fumi_pred == y_true_targets else np.array([255, 0, 0])
+        boundary_size = 4
+
         hor = np.ones((size, image.shape[1] // 2, 3))
         hor = np.hstack([col_a * hor, col_f * hor])
         image = np.vstack([hor, image, hor])
         ver_a = col_a * np.ones((image.shape[0], size, 3))
         ver_f = col_f * np.ones((image.shape[0], size, 3))
-        return np.hstack([ver_a, image, ver_f])
+        image = np.hstack([ver_a, image, ver_f])
+        hor_white = np.array([255, 255, 255]) * np.ones(
+            (boundary_size, image.shape[1], 3))
+        image = np.hstack([hor_white, image, hor_white])
+        ver_white = np.array([255, 255, 255]) * np.ones(
+            (image.shape[0], boundary_size, 3))
+        image = np.vstack([ver_white, image, ver_white])
+        return image
 
     def run_am3(self, button):
 
@@ -187,13 +198,15 @@ class AM3Explorer():
         test_loss, test_acc, test_f1, test_prec, test_rec, test_avg_lamda, test_preds, test_true, query_idx, support_idx, support_lamda = am3.test_loop(
             self.args, self.am3_model, self.am3_test_loader,
             self.args.max_test_batches)
-        _, _, fumi_preds, _ = fumi.test_loop(self.fumi_args, self.fumi_model,
-                                             self.fumi_test_loader,
-                                             self.args.max_test_batches)
+        _, _, fumi_preds, fumi_targets = fumi.test_loop(
+            self.fumi_args, self.fumi_model, self.fumi_test_loader,
+            self.args.max_test_batches)
         self.query_idx = np.array(query_idx).reshape(-1)
         self.test_targets = np.array(test_true).reshape(-1)
         self.am3_test_preds = np.array(test_preds).reshape(-1)
         self.fumi_test_preds = fumi_preds[0].numpy().reshape(-1).astype(
+            np.uint8)
+        self.fumi_test_targets = fumi_targets[0].numpy().reshape(-1).astype(
             np.uint8)
         am3_accs = []
         fumi_accs = []
@@ -202,16 +215,22 @@ class AM3Explorer():
             am3_acc = np.mean(
                 self.am3_test_preds[ids] == self.test_targets[ids])
             fumi_acc = np.mean(
-                self.fumi_test_preds[ids] == self.test_targets[ids])
+                self.fumi_test_preds[self.fumi_test_targets == i] ==
+                self.fumi_test_targets[self.fumi_test_targets == i])
             am3_accs.append(am3_acc)
             fumi_accs.append(fumi_acc)
         self._show_am3_images()
+
         mapping = []
+        fumi_mapping = []
         for i in range(5):
             true_class = self.data.annotations['annotations'][self.query_idx[
                 self.test_targets == i][0]]['category_id']
+            true_class_fumi = self.data.annotations['annotations'][
+                self.query_idx[self.fumi_test_targets == i][0]]['category_id']
             try:
                 mapping.append(cindxs.index(true_class))
+                fumi_mapping.append(cindxs.index(true_class_fumi))
             except:
                 pass
 
@@ -219,9 +238,9 @@ class AM3Explorer():
         fumi_accs = np.array(fumi_accs)
         am3_accs_fixed = am3_accs.copy()
         fumi_accs_fixed = fumi_accs.copy()
-        for ind, j in enumerate(mapping):
+        for ind, (j, k) in enumerate(zip(mapping, fumi_mapping)):
             am3_accs_fixed[j] = am3_accs[ind]
-            fumi_accs_fixed[j] = fumi_accs[ind]
+            fumi_accs_fixed[k] = fumi_accs[ind]
 
         fig, ax = plt.subplots(figsize=(15, 8))
         ax.bar(np.arange(5), am3_accs_fixed, width=0.35)
@@ -241,6 +260,7 @@ class AM3Explorer():
                 self.colour_image(self.am3_test_preds[i],
                                   self.fumi_test_preds[i],
                                   self.test_targets[i],
+                                  self.fumi_test_targets[i],
                                   self.data.images[self.query_idx[i]]))
 
         frames = [
