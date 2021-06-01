@@ -176,10 +176,10 @@ class AM3Explorer():
         image = np.hstack([ver_a, image, ver_f])
         hor_white = np.array([255, 255, 255]) * np.ones(
             (boundary_size, image.shape[1], 3))
-        image = np.hstack([hor_white, image, hor_white])
+        image = np.vstack([hor_white, image, hor_white])
         ver_white = np.array([255, 255, 255]) * np.ones(
             (image.shape[0], boundary_size, 3))
-        image = np.vstack([ver_white, image, ver_white])
+        image = np.hstack([ver_white, image, ver_white])
         return image
 
     def run_am3(self, button):
