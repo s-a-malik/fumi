@@ -81,14 +81,14 @@ class AM3Explorer():
         self.fumi_args = fumi_args
 
         os.environ['WANDB_SILENT'] = "true"
-        self.am3_checkpoint_file = wandb.restore(
-            "best.pth.tar",
-            run_path=f"multimodal-image-cls/{models[0]}/{checkpoints[0]}",
-            root=model_paths[0])
-        self.fumi_checkpoint_file = wandb.restore(
-            "best.pth.tar",
-            run_path=f"multimodal-image-cls/{models[1]}/{checkpoints[1]}",
-            root=model_paths[1])
+        # self.am3_checkpoint_file = wandb.restore(
+        #     "best.pth.tar",
+        #     run_path=f"multimodal-image-cls/{models[0]}/{checkpoints[0]}",
+        #     root=model_paths[0])
+        # self.fumi_checkpoint_file = wandb.restore(
+        #     "best.pth.tar",
+        # run_path=f"multimodal-image-cls/{models[1]}/{checkpoints[1]}",
+        #     root=model_paths[1])
 
         # generate a fake batch to get the description dictionary (i.e. the tokens)
         test, _ = self.gen_batch([1, 2, 3, 4, 5])
@@ -101,7 +101,7 @@ class AM3Explorer():
 
         self.am3_model, self.am3_optimizer = utils.load_checkpoint(
             self.am3_model, self.am3_optimizer, self.args.device,
-            self.am3_checkpoint_file.name)
+            "am3.pth.tar")
         print("Finished loading AM3 checkpoint")
         print("Loading FUMI checkpoint")
         test, _ = self.gen_batch([1, 2, 3, 4, 5],
@@ -114,7 +114,7 @@ class AM3Explorer():
 
         self.fumi_model, self.fumi_optimizer = utils.load_checkpoint(
             self.fumi_model, self.fumi_optimizer, self.fumi_args.device,
-            self.fumi_checkpoint_file.name)
+            "fumi.pth.tar")
         print("Finished loading FUMI checkpoint")
         ui = self.construct_interface()
         out = widgets.interactive_output(
