@@ -208,7 +208,7 @@ def parser():
     return parser
 
 
-def init_model(args, dictionary):
+def init_model(args, dictionary, watch=True):
     """Initialise model
     """
     model = None
@@ -242,7 +242,8 @@ def init_model(args, dictionary):
                         dictionary=dictionary,
                         pooling_strat=args.pooling_strat)
 
-    wandb.watch(model, log="all")  #  for tracking gradients etc.
+    if watch:
+        wandb.watch(model, log="all")  #  for tracking gradients etc.
     model.to(args.device)
     return model
 

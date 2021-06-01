@@ -94,7 +94,9 @@ class AM3Explorer():
         test, _ = self.gen_batch([1, 2, 3, 4, 5])
         # load AM3 and FUMI checkpoint
         print("Loading AM3 checkpoint")
-        self.am3_model = utils.init_model(self.args, test.dictionary)
+        self.am3_model = utils.init_model(self.args,
+                                          test.dictionary,
+                                          watch=False)
         self.am3_optimizer = utils.init_optim(self.args, self.am3_model)
 
         self.am3_model, self.am3_optimizer = utils.load_checkpoint(
@@ -105,7 +107,9 @@ class AM3Explorer():
         test, _ = self.gen_batch([1, 2, 3, 4, 5],
                                  stop_words=True,
                                  common_name=False)
-        self.fumi_model = utils.init_model(fumi_args, test.dictionary)
+        self.fumi_model = utils.init_model(fumi_args,
+                                           test.dictionary,
+                                           watch=False)
         self.fumi_optimizer = utils.init_optim(fumi_args, self.fumi_model)
 
         self.fumi_model, self.fumi_optimizer = utils.load_checkpoint(
