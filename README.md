@@ -1,4 +1,4 @@
-# COMP0087 Project: Improving Few-shot Image Classification using Class Descriptions
+# Improving Few-shot Image Classification using Class Descriptions
 
 Authors: Matthew Jackson, Shreshth Malik, Michael Matthews, and Yousuf Mohamed-Ahmed
 
