@@ -152,7 +152,7 @@ class AM3Explorer():
                                    shuffle=False,
                                    num_test_per_class=int(100 / 5),
                                    num_train_per_class=5)
-        test_split.zero()
+        test_split.seed(0)
         test_loader = BatchMetaDataLoader(test_split,
                                           batch_size=2,
                                           shuffle=False,
