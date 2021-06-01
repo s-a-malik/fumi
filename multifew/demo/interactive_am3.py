@@ -243,11 +243,12 @@ class AM3Explorer():
             fumi_accs_fixed[k] = fumi_accs[ind]
 
         fig, ax = plt.subplots(figsize=(15, 8))
-        ax.bar(np.arange(5), am3_accs_fixed, width=0.35)
-        ax.bar(np.arange(5) + 0.35, fumi_accs_fixed, width=0.35)
+        h1 = ax.bar(np.arange(5), am3_accs_fixed, width=0.35)
+        h2 = ax.bar(np.arange(5) + 0.35, fumi_accs_fixed, width=0.35)
         ax.set_xticks(np.arange(5))
         ax.set_xticklabels(common_names_selected)
         ax.set_ylabel("Accuracy per species")
+        plt.legend([h1, h2], ["AM3", "FuMI"])
         plt.show()
 
     def _show_am3_images(self):
@@ -326,14 +327,14 @@ class AM3Explorer():
 
         ui = widgets.VBox([common_name_box, self.description])
         self.run_am3_button = widgets.Button(
-            description="Run AM3 (with the above support set)",
+            description="Run AM3 and FuMI (with the above support set)",
             layout=widgets.Layout(width='100%'),
             disabled=False)
         self.back_button = widgets.Button(description="Back",
-                                          layout=widgets.Layout(width='30%'),
+                                          layout=widgets.Layout(width='20%'),
                                           disabled=True)
         self.next_button = widgets.Button(description="Next",
-                                          layout=widgets.Layout(width='30%'),
+                                          layout=widgets.Layout(width='20%'),
                                           disabled=False)
 
         self.next_button.on_click(self.on_next)
