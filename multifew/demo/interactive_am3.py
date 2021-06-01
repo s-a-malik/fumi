@@ -165,7 +165,7 @@ class AM3Explorer():
         col_f = np.array([0, 255, 0]) if fumi_pred == y_true else np.array(
             [255, 0, 0])
         hor = np.ones((size, image.shape[1] // 2, 3))
-        hor = np.hstack(col_a * hor, col_f * hor)
+        hor = np.hstack([col_a * hor, col_f * hor])
         image = np.vstack([hor, image, hor])
         ver_a = col_a * np.ones((image.shape[0], size, 3))
         ver_f = col_f * np.ones((image.shape[0], size, 3))
