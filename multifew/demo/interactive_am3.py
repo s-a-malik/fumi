@@ -193,7 +193,8 @@ class AM3Explorer():
         self.query_idx = np.array(query_idx).reshape(-1)
         self.test_targets = np.array(test_true).reshape(-1)
         self.am3_test_preds = np.array(test_preds).reshape(-1)
-        self.fumi_test_preds = np.array(fumi_preds).reshape(-1)
+        self.fumi_test_preds = fumi_preds[0].numpy().reshape(-1).astype(
+            np.uint8)
         am3_accs = []
         fumi_accs = []
         for i in range(5):
