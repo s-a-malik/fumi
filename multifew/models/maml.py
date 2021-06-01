@@ -8,7 +8,8 @@ from collections import OrderedDict
 from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
-import utils
+from ..utils.average_meter import AverageMeter
+from ..utils import utils as utils
 
 
 class PureImageNetwork(MetaModule):
@@ -18,19 +19,18 @@ class PureImageNetwork(MetaModule):
         self.n_way = n_way
         self.hidden = hidden
 
-        self.net = MetaSequential(OrderedDict([
-            ('lin1', MetaLinear(im_embed_dim, hidden)),
-            ('relu', nn.ReLU()),
-            ('lin2', MetaLinear(hidden, n_way))
-        ]))
-
+        self.net = MetaSequential(
+            OrderedDict([('lin1', MetaLinear(im_embed_dim, hidden)),
+                         ('relu', nn.ReLU()),
+                         ('lin2', MetaLinear(hidden, n_way))]))
 
     def forward(self, inputs, params=None):
-      logits = self.net(inputs, params=self.get_subdict(params, 'net'))
-      return logits
+        logits = self.net(inputs, params=self.get_subdict(params, 'net'))
+        return logits
 
 
-def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
+def training_run(args, model, optimizer, train_loader, val_loader,
+                 max_test_batches):
     """
     MAML training loop
 
@@ -45,27 +45,33 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     try:
         # Training loop
         for batch_idx, batch in enumerate(train_loader):
-            train_loss, train_acc = evaluate(
-                args=args,
-                model=model,
-                batch=batch,
-                optimizer=optimizer,
-                task="train")
+            train_loss, train_acc = evaluate(args=args,
+                                             model=model,
+                                             batch=batch,
+                                             optimizer=optimizer,
+                                             task="train")
 
-            wandb.log({"train/acc": train_acc,
-                       "train/loss": train_loss,
-                       "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
+            wandb.log(
+                {
+                    "train/acc": train_acc,
+                    "train/loss": train_loss,
+                    "num_episodes": (batch_idx + 1) * args.batch_size
+                },
+                step=batch_idx)
 
             # Eval on validation set periodically
             if batch_idx % args.eval_freq == 0:
-                val_loss, val_acc = test_loop(
-                    args, model, val_loader, max_test_batches)
+                val_loss, val_acc = test_loop(args, model, val_loader,
+                                              max_test_batches)
                 is_best = val_loss < best_loss
                 if is_best:
                     best_loss = val_loss
                     best_batch_idx = batch_idx
-                wandb.log({"val/acc": val_acc,
-                           "val/loss": val_loss}, step=batch_idx)
+                wandb.log({
+                    "val/acc": val_acc,
+                    "val/loss": val_loss
+                },
+                          step=batch_idx)
 
                 checkpoint_dict = {
                     "batch_idx": batch_idx,
@@ -76,11 +82,14 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                 }
                 utils.save_checkpoint(checkpoint_dict, is_best)
 
-                print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
-                      f"\nval/loss: {val_loss}, val/acc: {val_acc}")
+                print(
+                    f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
+                    f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
             # break after max iters or early stopping
-            if (batch_idx > args.epochs - 1) or (args.patience > 0 and batch_idx - best_batch_idx > args.patience):
+            if (batch_idx > args.epochs - 1) or (
+                    args.patience > 0
+                    and batch_idx - best_batch_idx > args.patience):
                 break
     except KeyboardInterrupt:
         pass
@@ -96,15 +105,15 @@ def test_loop(args, model, test_loader, max_num_batches):
     - avg_test_loss (float): average test loss per task
     """
 
-    avg_test_acc = utils.AverageMeter()
-    avg_test_loss = utils.AverageMeter()
-    for batch_idx, batch in enumerate(tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
-        test_loss, test_acc = evaluate(
-            args=args,
-            model=model,
-            batch=batch,
-            optimizer=None,
-            task="test")
+    avg_test_acc = AverageMeter()
+    avg_test_loss = AverageMeter()
+    for batch_idx, batch in enumerate(
+            tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
+        test_loss, test_acc = evaluate(args=args,
+                                       model=model,
+                                       batch=batch,
+                                       optimizer=None,
+                                       task="test")
         avg_test_acc.update(test_acc)
         avg_test_loss.update(test_loss)
         if batch_idx > max_num_batches - 1:
@@ -137,8 +146,9 @@ def evaluate(args, model, batch, optimizer, task="train"):
     outer_loss = torch.tensor(0., device=args.device)
     accuracy = torch.tensor(0., device=args.device)
     for task_idx, (train_input, train_target, test_input,
-                   test_target) in enumerate(zip(train_inputs, train_targets,
-                                                 test_inputs, test_targets)):
+                   test_target) in enumerate(
+                       zip(train_inputs, train_targets, test_inputs,
+                           test_targets)):
         params = None
         n_steps = 0
         if task == "train":

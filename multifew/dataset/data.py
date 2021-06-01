@@ -291,7 +291,8 @@ class Zanim(CombinationMetaDataset):
                  ],
                  remove_stop_words=True,
                  image_embedding_model='resnet-152',
-                 target_transform=None):
+                 target_transform=None,
+                 categories=None):
         """
 		:param root: the path to the root directory of the dataset
 		:param json_path: the path to the json file containing the annotations
@@ -310,7 +311,8 @@ class Zanim(CombinationMetaDataset):
             tokenisation_mode=tokenisation_mode,
             description_mode=description_mode,
             image_embedding_model=image_embedding_model,
-            remove_stop_words=remove_stop_words)
+            remove_stop_words=remove_stop_words,
+            categories=categories)
         super().__init__(self.dataset,
                          num_classes_per_task,
                          target_transform=target_transform)

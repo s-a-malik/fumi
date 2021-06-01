@@ -9,20 +9,30 @@ from transformers import BertModel
 from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
-import utils
-from models.common import WordEmbedding
+from ..utils.average_meter import AverageMeter
+from ..utils import utils as utils
+from .common import WordEmbedding
 
 
 class FUMI(nn.Module):
-    def __init__(self, n_way=5, im_emb_dim=2048, im_hid_dim=32, text_encoder="BERT",  text_emb_dim=300, text_hid_dim=1024, dictionary=None, pooling_strat="mean", shared_feats=True):
+    def __init__(self,
+                 n_way=5,
+                 im_emb_dim=2048,
+                 im_hid_dim=32,
+                 text_encoder="BERT",
+                 text_emb_dim=300,
+                 text_hid_dim=1024,
+                 dictionary=None,
+                 pooling_strat="mean",
+                 shared_feats=True):
         super(FUMI, self).__init__()
         self.n_way = n_way
         self.im_emb_dim = im_emb_dim
         self.im_hid_dim = im_hid_dim
         self.text_encoder_type = text_encoder
-        self.text_emb_dim = text_emb_dim        # only applicable if precomputed
+        self.text_emb_dim = text_emb_dim  # only applicable if precomputed
         self.text_hid_dim = text_hid_dim
-        self.dictionary = dictionary            # for word embeddings
+        self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
 
         if self.text_encoder_type == "BERT":
@@ -32,8 +42,9 @@ class FUMI(nn.Module):
             self.text_encoder = nn.Identity()
         elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
             # load pretrained word embeddings as weights
-            self.text_encoder = WordEmbedding(
-                self.text_encoder_type, self.pooling_strat, self.dictionary)
+            self.text_encoder = WordEmbedding(self.text_encoder_type,
+                                              self.pooling_strat,
+                                              self.dictionary)
             self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
@@ -49,23 +60,26 @@ class FUMI(nn.Module):
             self.net = nn.Sequential(
                 nn.Linear(self.text_emb_dim, self.text_hid_dim),
                 nn.ReLU(),
-                nn.Linear(self.text_hid_dim,
-                        self.im_hid_dim     # Weights
-                        + 1)                # Biases
+                nn.Linear(
+                    self.text_hid_dim,
+                    self.im_hid_dim  # Weights
+                    + 1)  # Biases
             )
             # Bit of a hack to copy torch default weight initialisation
-            self.first = nn.Linear(1,
-                                   self.im_hid_dim * self.im_emb_dim     # Weights
-                                   + self.im_hid_dim,                    # Biases
-                                   bias=False)
+            self.first = nn.Linear(
+                1,
+                self.im_hid_dim * self.im_emb_dim  # Weights
+                + self.im_hid_dim,  # Biases
+                bias=False)
         else:
             # Text embedding to image parameters
             self.net = nn.Sequential(
                 nn.Linear(self.text_emb_dim, self.text_hid_dim),
                 nn.ReLU(),
-                nn.Linear(self.text_hid_dim,
-                        self.im_hid_dim * (self.im_emb_dim + 1)   # Weights
-                        + self.im_hid_dim + 1)                    # Biases
+                nn.Linear(
+                    self.text_hid_dim,
+                    self.im_hid_dim * (self.im_emb_dim + 1)  # Weights
+                    + self.im_hid_dim + 1)  # Biases
             )
 
     def forward(self, text_embed, device):
@@ -73,11 +87,13 @@ class FUMI(nn.Module):
         if self.shared_feats:
             shared_params = self.first(torch.ones(1).to(device))
             bias_len = self.im_hid_dim + 1
-            out = torch.empty(len(text_embed),
-                              self.im_hid_dim * (self.im_emb_dim + 1) + self.im_hid_dim + 1).to(device)
-            out[:, :bias_len-1] = shared_params[:bias_len-1]
-            out[:, bias_len-1] = im_params[:, 0]
-            out[:, bias_len:-self.im_hid_dim] = shared_params[bias_len-1:]
+            out = torch.empty(
+                len(text_embed),
+                self.im_hid_dim * (self.im_emb_dim + 1) + self.im_hid_dim +
+                1).to(device)
+            out[:, :bias_len - 1] = shared_params[:bias_len - 1]
+            out[:, bias_len - 1] = im_params[:, 0]
+            out[:, bias_len:-self.im_hid_dim] = shared_params[bias_len - 1:]
             out[:, -self.im_hid_dim:] = im_params[:, 1:]
             return out
         return im_params
@@ -107,6 +123,7 @@ class FUMI(nn.Module):
         test_inputs = [x.to(args.device) for x in test_inputs]
         # test_inputs = test_inputs[3].to(device=args.device)
         test_targets = test_targets.to(device=args.device)
+        test_preds = torch.zeros(test_targets.shape).to(device=args.device)
 
         # Unpack input
         if self.text_encoder_type == "BERT":
@@ -118,7 +135,8 @@ class FUMI(nn.Module):
 
         outer_loss = torch.tensor(0., device=args.device)
         accuracy = torch.tensor(0., device=args.device)
-        for task_idx, (train_target, test_target) in enumerate(zip(train_targets, test_targets)):
+        for task_idx, (train_target, test_target) in enumerate(
+                zip(train_targets, test_targets)):
             n_steps = 0
             if task == "train":
                 n_steps = args.num_train_adapt_steps
@@ -126,11 +144,12 @@ class FUMI(nn.Module):
                 n_steps = args.num_test_adapt_steps
 
             if self.text_encoder_type == "BERT":
-                im_params = self.get_im_params(
-                    train_texts[task_idx], train_target, args.device, train_attn_masks[task_idx])
+                im_params = self.get_im_params(train_texts[task_idx],
+                                               train_target, args.device,
+                                               train_attn_masks[task_idx])
             else:
-                im_params = self.get_im_params(
-                    train_texts[task_idx], train_target, args.device)
+                im_params = self.get_im_params(train_texts[task_idx],
+                                               train_target, args.device)
 
             for _ in range(n_steps):
                 train_logit = self.im_forward(train_imss[task_idx], im_params)
@@ -141,6 +160,8 @@ class FUMI(nn.Module):
                 im_params -= args.step_size * grads[0]
 
             test_logit = self.im_forward(test_imss[task_idx], im_params)
+            _, test_preds[task_idx] = test_logit.max(dim=-1)
+
             outer_loss += F.cross_entropy(test_logit, test_target)
 
             with torch.no_grad():
@@ -154,35 +175,38 @@ class FUMI(nn.Module):
             outer_loss.backward()
             optimizer.step()
 
-        return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu().numpy()
+        return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu(
+        ).numpy(), test_preds, test_targets
 
     def get_im_params(self, text, targets, device, attn_mask=None):
         NK, seq_len = text.shape
         if self.text_encoder_type == "BERT":
             # Need to reshape batch for BERT input
-            bert_output = self.text_encoder(
-                text.view(-1, seq_len), attention_mask=attn_mask.view(-1, seq_len))
+            bert_output = self.text_encoder(text.view(-1, seq_len),
+                                            attention_mask=attn_mask.view(
+                                                -1, seq_len))
             # Get [CLS] token
             text_encoding = bert_output[1].view(NK, -1)  # (N*K x 768)
         elif self.text_encoder_type == "rand":
             # Get a random tensor as the encoding
-            text_encoding = 2*torch.rand(NK, self.text_emb_dim) - 1
+            text_encoding = 2 * torch.rand(NK, self.text_emb_dim) - 1
         else:
             text_encoding = self.text_encoder(text.unsqueeze(0)).squeeze()
 
         # Transform to per-class descriptions
         class_text_enc = torch.empty(self.n_way, self.text_emb_dim).to(device)
         for i in range(self.n_way):
-            class_text_enc[i] = text_encoding[(
-                targets == i).nonzero(as_tuple=True)[0][0]]
+            class_text_enc[i] = text_encoding[(targets == i).nonzero(
+                as_tuple=True)[0][0]]
 
         return self(class_text_enc, device)
 
     def im_forward(self, im_embeds, im_params):
         bias_len = self.im_hid_dim + 1
         b_im = torch.unsqueeze(im_params[:, :bias_len], 2)
-        w_im = im_params[:, bias_len:].view(-1, self.im_emb_dim + 1, self.im_hid_dim)
-        
+        w_im = im_params[:, bias_len:].view(-1, self.im_emb_dim + 1,
+                                            self.im_hid_dim)
+
         a = torch.matmul(im_embeds, w_im[:, :-1])
         h = F.relu(torch.transpose(a, 1, 2) + b_im[:, :-1])
 
@@ -192,7 +216,8 @@ class FUMI(nn.Module):
         return torch.transpose(out, 0, 1)
 
 
-def training_run(args, model, optimizer, train_loader, val_loader, max_test_batches):
+def training_run(args, model, optimizer, train_loader, val_loader,
+                 max_test_batches):
     """
     FUMI training loop
     """
@@ -204,26 +229,32 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
     try:
         # Training loop
         for batch_idx, batch in enumerate(train_loader):
-            train_loss, train_acc = model.evaluate(
-                args=args,
-                batch=batch,
-                optimizer=optimizer,
-                task="train")
+            train_loss, train_acc = model.evaluate(args=args,
+                                                   batch=batch,
+                                                   optimizer=optimizer,
+                                                   task="train")
 
-            wandb.log({"train/acc": train_acc,
-                       "train/loss": train_loss,
-                       "num_episodes": (batch_idx+1)*args.batch_size}, step=batch_idx)
+            wandb.log(
+                {
+                    "train/acc": train_acc,
+                    "train/loss": train_loss,
+                    "num_episodes": (batch_idx + 1) * args.batch_size
+                },
+                step=batch_idx)
 
             # Eval on validation set periodically
             if batch_idx % args.eval_freq == 0 and batch_idx != 0:
-                val_loss, val_acc = test_loop(
-                    args, model, val_loader, max_test_batches)
+                val_loss, val_acc = test_loop(args, model, val_loader,
+                                              max_test_batches)
                 is_best = val_loss < best_loss
                 if is_best:
                     best_loss = val_loss
                     best_batch_idx = batch_idx
-                wandb.log({"val/acc": val_acc,
-                           "val/loss": val_loss}, step=batch_idx)
+                wandb.log({
+                    "val/acc": val_acc,
+                    "val/loss": val_loss
+                },
+                          step=batch_idx)
 
                 checkpoint_dict = {
                     "batch_idx": batch_idx,
@@ -234,11 +265,14 @@ def training_run(args, model, optimizer, train_loader, val_loader, max_test_batc
                 }
                 utils.save_checkpoint(checkpoint_dict, is_best)
 
-                print(f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
-                      f"\nval/loss: {val_loss}, val/acc: {val_acc}")
+                print(
+                    f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
+                    f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
             # break after max iters or early stopping
-            if (batch_idx > args.epochs - 1) or (args.patience > 0 and batch_idx - best_batch_idx > args.patience):
+            if (batch_idx > args.epochs - 1) or (
+                    args.patience > 0
+                    and batch_idx - best_batch_idx > args.patience):
                 break
     except KeyboardInterrupt:
         pass
@@ -254,19 +288,23 @@ def test_loop(args, model, test_loader, max_num_batches):
     - avg_test_loss (float): average test loss per task
     """
 
-    avg_test_acc = utils.AverageMeter()
-    avg_test_loss = utils.AverageMeter()
-    for batch_idx, batch in enumerate(tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
-        test_loss, test_acc = model.evaluate(
-            args=args,
-            batch=batch,
-            optimizer=None,
-            task="test")
+    avg_test_acc = AverageMeter()
+    avg_test_loss = AverageMeter()
+    test_preds = []
+    test_targets = []
+    for batch_idx, batch in enumerate(
+            tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
+        test_loss, test_acc, preds, target = model.evaluate(args=args,
+                                                            batch=batch,
+                                                            optimizer=None,
+                                                            task="test")
         avg_test_acc.update(test_acc)
         avg_test_loss.update(test_loss)
+        test_preds.append(preds)
+        test_targets.append(target)
         if batch_idx > max_num_batches - 1:
             break
-    return avg_test_loss.avg, avg_test_acc.avg
+    return avg_test_loss.avg, avg_test_acc.avg, test_preds, test_targets
 
 
 def get_accuracy(logits, targets):
