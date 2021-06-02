@@ -42,10 +42,6 @@ python main.py --dataset zanim --data_dir "./Dataset" --log_dir "./fumi" \
 If you find our work useful, please consider citing. (TBC)
 
 
-## Acknowledgements
-
-Some inspiration for the meta-learning implementations was taken from the [Torchmeta](https://github.com/tristandeleu/pytorch-meta) library examples.
-
 ## Disclaimer
 
 This is research code shared without support or guarantee of quality. Please let us know, however, if there is anything wrong or that could be improved and we will try to solve it.
