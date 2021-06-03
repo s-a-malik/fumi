@@ -8,7 +8,7 @@ This repository provides a framework to train and evaluate multi-modal models fo
 
 
 ## Dataset 
-Zanim ('zero-shot animals') is a dataset specifically designed to benchmark few-shot and multi-modal image classification; each animal in the dataset has a succinct description with a description of its appearance. This lends itself to attempting to create models that can leverage this information to improve few (or zero)-shot image-classification.
+Zanim ('zero-shot animals') is a dataset specifically designed to benchmark few-shot and multi-modal image classification; each animal in the dataset has a succinct description of its appearance, and, as a result, it is desirable to create models that can leverage this information to improve few (or zero)-shot image-classification.
 <img src="dataset-example.svg">
 
 There is a zip of the entire set of images [here](https://drive.google.com/file/d/1ZYXk71G_DPZqrbE3Obqw7wN2b8yF0ejq/view?usp=sharing); the [license](https://drive.google.com/file/d/1_XMWVk63t5szHEuW-D5NB3Gab2c9NWX_/view?usp=sharing) of the dataset; a [json](https://drive.google.com/file/d/1Wr9ZBk3SMHFqkm_H9NYqx-Y_zJB0Cnpu/view?usp=sharing) with annotations and class descriptions.
