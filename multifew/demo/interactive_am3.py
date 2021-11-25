@@ -18,9 +18,9 @@ import argparse
 from torchmeta.transforms import Categorical, ClassSplitter
 from torchmeta.utils.data import (BatchMetaDataLoader, ClassDataset,
                                   CombinationMetaDataset, Dataset)
-from ..utils import utils
-from ..dataset.data import Zanim, TokenisationMode, DescriptionMode
-from ..models import am3, fumi
+from utils import utils
+from dataset.data import Zanim, TokenisationMode, DescriptionMode
+from models import am3, fumi
 
 
 class AM3Explorer():
