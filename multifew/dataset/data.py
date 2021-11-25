@@ -51,13 +51,15 @@ def get_dataset(args):
                                                  num_shots, num_shots_test,
                                                  text_encoder, text_type,
                                                  remove_stop_words,
-                                                 args.image_embedding_model)
+                                                 args.image_embedding_model,
+                                                 args.colab)
     elif dataset == "supervised-zanim":
         train, val, test = get_supervised_zanim(data_dir, json_path,
                                                 text_encoder, text_type,
                                                 remove_stop_words,
                                                 args.image_embedding_model,
-                                                args.device)
+                                                args.device,
+                                                args.colab)
         if text_encoder != 'BERT':
             raise NotImplementedError()
         dictionary = {}
@@ -103,7 +105,7 @@ def _convert_zanim_arguments(text_encoder: str, text_type: List[str]):
 
 def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
                          text_type: str, remove_stop_words: bool,
-                         image_embedding_model: str, device: str):
+                         image_embedding_model: str, device: str, colab: bool):
     splits = []
     _, description_mode = _convert_zanim_arguments(text_encoder, text_type)
     for (train, val, test) in [(True, False, False), (False, True, False),
@@ -117,13 +119,14 @@ def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
                             description_mode=description_mode,
                             remove_stop_words=remove_stop_words,
                             image_embedding_model=image_embedding_model,
-                            device=device))
+                            device=device,
+                            colab=colab))
     return tuple(splits)
 
 
 def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
               num_shots_test: int, text_encoder: str, text_type: str,
-              remove_stop_words: bool, image_embedding_model: str):
+              remove_stop_words: bool, image_embedding_model: str, colab: bool):
 
     token_mode, description_mode = _convert_zanim_arguments(
         text_encoder,
@@ -136,7 +139,8 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                   tokenisation_mode=token_mode,
                   description_mode=description_mode,
                   remove_stop_words=remove_stop_words,
-                  image_embedding_model=image_embedding_model)
+                  image_embedding_model=image_embedding_model,
+                  colab=colab)
     train_split = ClassSplitter(train,
                                 shuffle=True,
                                 num_test_per_class=num_shots_test,
@@ -150,7 +154,8 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                 tokenisation_mode=token_mode,
                 description_mode=description_mode,
                 remove_stop_words=remove_stop_words,
-                image_embedding_model=image_embedding_model)
+                image_embedding_model=image_embedding_model,
+                colab=colab)
     val_split = ClassSplitter(val,
                               shuffle=True,
                               num_test_per_class=int(100 / num_way),
@@ -164,7 +169,8 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                  tokenisation_mode=token_mode,
                  description_mode=description_mode,
                  remove_stop_words=remove_stop_words,
-                 image_embedding_model=image_embedding_model)
+                 image_embedding_model=image_embedding_model,
+                 colab=colab)
     test_split = ClassSplitter(test,
                                shuffle=True,
                                num_test_per_class=int(100 / num_way),
@@ -227,7 +233,8 @@ class SupervisedZanim(torch.utils.data.Dataset):
                  remove_stop_words=False,
                  image_embedding_model="resnet-152",
                  device=None,
-                 pooling=lambda x: torch.mean(x, dim=1)):
+                 pooling=lambda x: torch.mean(x, dim=1),
+                 colab=False):
         super().__init__()
         if (train + val + test > 1) or (train + val + test == 0):
             raise ValueError(
@@ -241,7 +248,8 @@ class SupervisedZanim(torch.utils.data.Dataset):
             tokenisation_mode=TokenisationMode.BERT,
             description_mode=description_mode,
             remove_stop_words=remove_stop_words,
-            image_embedding_model=image_embedding_model)
+            image_embedding_model=image_embedding_model,
+            colab=colab)
         self.model = BertModel.from_pretrained('bert-base-uncased')
 
         print("Precomputing BERT embeddings")
@@ -292,7 +300,8 @@ class Zanim(CombinationMetaDataset):
                  remove_stop_words=True,
                  image_embedding_model='resnet-152',
                  target_transform=None,
-                 categories=None):
+                 categories=None,
+                 colab=False):
         """
 		:param root: the path to the root directory of the dataset
 		:param json_path: the path to the json file containing the annotations
@@ -312,7 +321,8 @@ class Zanim(CombinationMetaDataset):
             description_mode=description_mode,
             image_embedding_model=image_embedding_model,
             remove_stop_words=remove_stop_words,
-            categories=categories)
+            categories=categories,
+            colab=colab)
         super().__init__(self.dataset,
                          num_classes_per_task,
                          target_transform=target_transform)
@@ -335,7 +345,8 @@ class ZanimClassDataset(ClassDataset):
                  ],
                  remove_stop_words=True,
                  image_embedding_model: str = "resnet-152",
-                 categories=None):
+                 categories=None,
+                 colab=False):
         super().__init__(meta_train=meta_train,
                          meta_val=meta_val,
                          meta_test=meta_test)
@@ -393,10 +404,13 @@ class ZanimClassDataset(ClassDataset):
         print("Copying image embeddings to local disk")
 
         image_embedding_file = f"image-embedding-{image_embedding_model}.hdf5"
-        local_image_embedding_path = os.path.join('/content',
-                                                  image_embedding_file)
-        if not os.path.exists(local_image_embedding_path):
-            self._copy_image_embeddings(image_embedding_file)
+        if colab:
+            local_image_embedding_path = os.path.join('/content',
+                                                    image_embedding_file)
+            if not os.path.exists(local_image_embedding_path):
+                self._copy_image_embeddings(image_embedding_file)
+        else:
+            local_image_embedding_path = os.path.join(self.root, image_embedding_file)
         self.image_embeddings = h5py.File(local_image_embedding_path,
                                           'r')['images']
         self._num_classes = len(self.categories)
@@ -555,7 +569,8 @@ if __name__ == "__main__":
                                             text_type,
                                             remove_stop_words,
                                             image_embedding_model='resnet-152',
-                                            device=args.device)
+                                            device=args.device,
+                                            colab=args.colab)
     for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
         image, text, cat = batch
         print(image.shape)
@@ -573,7 +588,8 @@ if __name__ == "__main__":
         text_encoder,
         text_type,
         remove_stop_words,
-        image_embedding_model="resnet-152")
+        image_embedding_model="resnet-152",
+        colab=args.colab)
     print("dictionary", len(dictionary), dictionary)
     train_loader = BatchMetaDataLoader(train,
                                        batch_size=batch_size,

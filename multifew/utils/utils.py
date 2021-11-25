@@ -45,6 +45,9 @@ def parser():
     parser.add_argument('--remove_stop_words',
                         action='store_true',
                         help="Whether to remove stop words")
+    parser.add_argument('--colab',
+                        action='store_true',
+                        help="Whether the script is running on Google Colab")
 
     # optimizer config
     parser.add_argument("--epochs",
