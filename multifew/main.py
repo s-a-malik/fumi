@@ -13,7 +13,7 @@ import models.maml as maml
 import models.fumi as fumi
 import models.clip as clip
 from dataset.data import get_dataset
-import utils
+import utils.utils as utils
 
 
 def main(args):

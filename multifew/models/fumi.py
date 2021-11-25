@@ -222,14 +222,14 @@ def training_run(args, model, optimizer, train_loader, val_loader,
     FUMI training loop
     """
 
-    best_loss, best_acc = test_loop(args, model, val_loader, max_test_batches)
+    best_loss, best_acc, _, _ = test_loop(args, model, val_loader, max_test_batches)
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
 
     try:
         # Training loop
         for batch_idx, batch in enumerate(train_loader):
-            train_loss, train_acc = model.evaluate(args=args,
+            train_loss, train_acc, _, _ = model.evaluate(args=args,
                                                    batch=batch,
                                                    optimizer=optimizer,
                                                    task="train")
@@ -244,7 +244,7 @@ def training_run(args, model, optimizer, train_loader, val_loader,
 
             # Eval on validation set periodically
             if batch_idx % args.eval_freq == 0 and batch_idx != 0:
-                val_loss, val_acc = test_loop(args, model, val_loader,
+                val_loss, val_acc, _, _ = test_loop(args, model, val_loader,
                                               max_test_batches)
                 is_best = val_loss < best_loss
                 if is_best:
