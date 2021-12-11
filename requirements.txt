@@ -1,4 +1,3 @@
-h5py==2.8.0
 Pillow==8.4.0
 protobuf==3.19.1
 matplotlib==3.4.3
