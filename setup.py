@@ -25,7 +25,7 @@ setuptools.setup(
         "wandb==0.10.26",
         "pandas==1.2.4",
         "gensim==4.0.1",
-        "nltk==3.6.1",
+        "nltk==3.6.5",
         "transformers==4.5.1",
     ],
     include_package_data=True,
