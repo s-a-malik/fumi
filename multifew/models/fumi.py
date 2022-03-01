@@ -11,7 +11,7 @@ from torchmeta.utils.gradient_based import gradient_update_parameters
 
 from utils.average_meter import AverageMeter
 from utils import utils as utils
-from .common import WordEmbedding
+from .common import WordEmbedding, RnnHid, RNN
 
 
 class FUMI(nn.Module):
@@ -30,7 +30,7 @@ class FUMI(nn.Module):
         self.im_emb_dim = im_emb_dim
         self.im_hid_dim = im_hid_dim
         self.text_encoder_type = text_encoder
-        self.text_emb_dim = text_emb_dim  # only applicable if precomputed
+        self.text_emb_dim = text_emb_dim  # only applicable if precomputed or RNN hid dim
         self.text_hid_dim = text_hid_dim
         self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
@@ -48,6 +48,10 @@ class FUMI(nn.Module):
             self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
+        elif self.text_encoder_type == "RNN":
+            self.text_encoder = RNN("glove", self.pooling_strat, self.dictionary, self.text_emb_dim)
+        elif self.text_encoder_type == "RNNhid":
+            self.text_encoder = RnnHid("glove", self.pooling_strat, self.dictionary, self.text_emb_dim)
         else:
             raise NameError(f"{text_encoder} not allowed as text encoder")
 

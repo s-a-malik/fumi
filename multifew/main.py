@@ -143,7 +143,7 @@ def parse_args():
 
     args.device = torch.device("cuda") if (not args.disable_cuda) and \
         torch.cuda.is_available() else torch.device("cpu")
-    print(f"running on device {torch.cuda.current_device()}")
+    print(f"running on device {args.device}")
 
     return args
 

@@ -125,8 +125,9 @@ def parser():
     parser.add_argument(
         "--text_encoder",
         type=str,
+        choices=['glove', 'w2v', 'RNN', 'RNNhid', 'BERT', 'rand'],
         default="BERT",
-        help="Type of text embedding (glove, w2v, RNN, BERT, rand)")
+        help="Type of text embedding (glove, w2v, RNN, RNNhid, BERT, rand)")
     parser.add_argument(
         "--pooling_strat",
         type=str,

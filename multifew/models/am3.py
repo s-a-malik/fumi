@@ -10,7 +10,7 @@ from tqdm.autonotebook import tqdm
 
 from utils.average_meter import AverageMeter
 from utils import utils as utils
-from .common import WordEmbedding, RNN
+from .common import WordEmbedding, RNN, RnnHid
 
 
 class AM3(nn.Module):
@@ -60,6 +60,9 @@ class AM3(nn.Module):
         elif self.text_encoder_type == "RNN":
             # TODO optional embedding type
             self.text_encoder = RNN("glove", self.pooling_strat,
+                                    self.dictionary, self.text_emb_dim)
+        elif self.text_encoder_type == "RNNhid":
+            self.text_encoder = RnnHid("glove", self.pooling_strat,
                                     self.dictionary, self.text_emb_dim)
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
