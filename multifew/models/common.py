@@ -160,35 +160,6 @@ class RnnHid(nn.Module):
         # unsqueeze
         return seq_embed.view(B, NK, -1)        # (B, N*K, rnn_hid_dim*2)
 
-    def forward(self, x, feats=False):
-        """Params:
-        - x (dict): dict of input tensors
-        - feats (bool): whether to return text embedding
-        """
-        text = x["input_ids"]
-        B, _ = text.shape
-        # padding masks (padding token = 0)
-        padding_mask = torch.where(text != 0, 1, 0)
-        seq_lens = torch.sum(padding_mask, dim=-1).cpu()
-
-        # embed
-        text_embedding = self.embed(text)      # (B x max_seq_len x emb_dim)
-
-        # feed through RNN
-        text_embedding_packed = pack_padded_sequence(text_embedding, seq_lens, batch_first=True, enforce_sorted=False)
-        self.rnn.flatten_parameters()   # to prevent baal error
-        _, (ht, _) = self.rnn(text_embedding_packed)
-
-        # concat forward and backward results (takes hidden states)
-        seq_embed = torch.cat((ht[0], ht[1]), dim=-1)
-        # classify        
-        logits = self.classifier(self.dropout(seq_embed))
-
-        if feats:
-            return logits, seq_embed
-        else:
-            return logits
-
 
 def get_embedding_weights(dictionary, text_encoder_type):
     """Loads gensim word embedding weights into a matrix
