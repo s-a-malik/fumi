@@ -71,6 +71,7 @@ class AM3(nn.Module):
 
         # fine tune set up
         if not self.fine_tune:
+            print("Not fine tuning embeddings")
             for param in self.text_encoder.parameters():
                 param.requires_grad = False
 
