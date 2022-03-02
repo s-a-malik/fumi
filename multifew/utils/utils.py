@@ -233,7 +233,8 @@ def init_model(args, dictionary, watch=True):
                           dictionary=dictionary,
                           pooling_strat=args.pooling_strat,
                           init_all_layers=args.init_all_layers,
-                          norm_hypernet=args.norm_hypernet)
+                          norm_hypernet=args.norm_hypernet,
+                          fine_tune=args.fine_tune)
     elif args.model == "clip":
         model = clip.CLIP(text_input_dim=args.text_emb_dim,
                           image_input_dim=args.im_emb_dim,

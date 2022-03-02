@@ -25,7 +25,8 @@ class FUMI(nn.Module):
                  dictionary=None,
                  pooling_strat="mean",
                  init_all_layers=False,
-                 norm_hypernet=True):
+                 norm_hypernet=True,
+                 fine_tune=False):
         super(FUMI, self).__init__()
         self.n_way = n_way
         self.im_emb_dim = im_emb_dim
@@ -36,6 +37,7 @@ class FUMI(nn.Module):
         self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
         self.norm_hypernet = norm_hypernet
+        self.fine_tune = fine_tune
 
         if self.text_encoder_type == "BERT":
             self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
@@ -57,9 +59,9 @@ class FUMI(nn.Module):
         else:
             raise NameError(f"{text_encoder} not allowed as text encoder")
 
-        # Todo: Add fine tune argument and condition
-        for param in self.text_encoder.parameters():
-            param.requires_grad = False
+        if not self.fine_tune:
+            for param in self.text_encoder.parameters():
+                param.requires_grad = False
 
         # Text embedding to image parameters
         net_layers = [
