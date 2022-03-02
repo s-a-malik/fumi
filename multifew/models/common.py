@@ -152,6 +152,7 @@ class RnnHid(nn.Module):
         
         # feed through RNN
         text_embedding_packed = pack_padded_sequence(text_embedding, seq_lens, batch_first=True, enforce_sorted=False)
+        self.rnn.flatten_parameters()
         _, (ht, _) = self.rnn(text_embedding_packed)
 
         # concat forward and backward results (takes hidden states)
