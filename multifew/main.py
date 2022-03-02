@@ -54,6 +54,7 @@ def main(args):
 
     # initialise model and optim
     model = utils.init_model(args, dictionary)
+    print(model)
     optimizer = utils.init_optim(args, model)
 
     # load previous state
