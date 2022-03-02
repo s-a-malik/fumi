@@ -17,7 +17,6 @@ setuptools.setup(
     install_requires=[
         'torch>=1.0.0',
         "tqdm==4.60.0",
-        "torchvision==0.9.1",
         "torch==1.8.1",
         "numpy==1.20.2",
         "torchmeta==1.7.0",

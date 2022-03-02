@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torchvision.models as models
 import torch.utils.data as data
 
 import wandb

@@ -8,8 +8,6 @@ from typing import List, Set
 import numpy as np
 from tqdm import tqdm
 import torch
-from torchvision import transforms
-from torchvision.transforms import Compose
 
 import h5py
 import nltk

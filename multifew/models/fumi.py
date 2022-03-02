@@ -24,7 +24,8 @@ class FUMI(nn.Module):
                  text_hid_dim=1024,
                  dictionary=None,
                  pooling_strat="mean",
-                 shared_feats=True):
+                 shared_feats=True,
+                 norm_hypernet=True):
         super(FUMI, self).__init__()
         self.n_way = n_way
         self.im_emb_dim = im_emb_dim
@@ -34,6 +35,7 @@ class FUMI(nn.Module):
         self.text_hid_dim = text_hid_dim
         self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
+        self.norm_hypernet = norm_hypernet
 
         if self.text_encoder_type == "BERT":
             self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
@@ -58,16 +60,17 @@ class FUMI(nn.Module):
         for param in self.text_encoder.parameters():
             param.requires_grad = False
 
+        # Text embedding to image parameters
+        net_layers = [
+            nn.Linear(self.text_emb_dim, self.text_hid_dim),
+            nn.ReLU()
+        ]
         self.shared_feats = shared_feats
         if self.shared_feats:
-            # Text embedding to image parameters
-            self.net = nn.Sequential(
-                nn.Linear(self.text_emb_dim, self.text_hid_dim),
-                nn.ReLU(),
-                nn.Linear(
-                    self.text_hid_dim,
-                    self.im_hid_dim  # Weights
-                    + 1)  # Biases
+            net_layers.append(nn.Linear(
+                self.text_hid_dim,
+                self.im_hid_dim  # Weights
+                + 1)  # Biases
             )
             # Bit of a hack to copy torch default weight initialisation
             self.first = nn.Linear(
@@ -76,15 +79,16 @@ class FUMI(nn.Module):
                 + self.im_hid_dim,  # Biases
                 bias=False)
         else:
-            # Text embedding to image parameters
-            self.net = nn.Sequential(
-                nn.Linear(self.text_emb_dim, self.text_hid_dim),
-                nn.ReLU(),
-                nn.Linear(
+            net_layers.append(nn.Linear(
                     self.text_hid_dim,
                     self.im_hid_dim * (self.im_emb_dim + 1)  # Weights
                     + self.im_hid_dim + 1)  # Biases
             )
+
+        if self.norm_hypernet:
+            net_layers.append(nn.Tanh())
+
+        self.net = nn.Sequential(*net_layers)
 
     def forward(self, text_embed, device):
         im_params = self.net(text_embed)
