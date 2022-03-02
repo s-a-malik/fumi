@@ -52,7 +52,7 @@ def parser():
     # optimizer config
     parser.add_argument("--epochs",
                         type=int,
-                        default=5000,
+                        default=50000,
                         help="Number of meta-learning batches to train for")
     parser.add_argument("--optim", type=str, default="adam", help="Optimiser")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
@@ -62,11 +62,11 @@ def parser():
                         help="Momentum for SGD")
     parser.add_argument("--batch_size",
                         type=int,
-                        default=5,
+                        default=4,
                         help="Number of tasks in mini-batch")
     parser.add_argument("--weight_decay",
                         type=float,
-                        default=0.0005,
+                        default=5e-4,
                         help="L2 regulariser")
     parser.add_argument("--num_warmup_steps",
                         type=float,
@@ -76,7 +76,7 @@ def parser():
     # dataloader config
     parser.add_argument("--num_shots",
                         type=int,
-                        default=5,
+                        default=3,
                         help="Number of examples per class (k-shot)")
     parser.add_argument("--num_ways",
                         type=int,
@@ -103,7 +103,7 @@ def parser():
     # model config
     parser.add_argument("--model",
                         type=str,
-                        default="am3",
+                        default="fumi",
                         help="Model to be trained")
     parser.add_argument("--prototype_dim",
                         type=int,
@@ -140,7 +140,7 @@ def parser():
         "--text_type",
         type=str,
         nargs="+",
-        default="label",
+        default="description",
         help=
         "What to use for text embedding (label, description or common_name) can take multiple arguments (appends the different text types) e.g. --text_type label description)"
     )
@@ -151,7 +151,7 @@ def parser():
     parser.add_argument(
         "--text_hid_dim",
         type=int,
-        default=300,
+        default=256,
         help="Hidden dimension for NN mapping to prototypes and lamda")
     parser.add_argument("--dropout",
                         type=float,
@@ -159,7 +159,7 @@ def parser():
                         help="Dropout rate")
     parser.add_argument("--step_size",
                         type=float,
-                        default=0.5,
+                        default=0.01,
                         help="MAML step size")
     parser.add_argument("--first_order",
                         action="store_true",
@@ -167,15 +167,15 @@ def parser():
     parser.add_argument(
         "--num_train_adapt_steps",
         type=int,
-        default=1,
+        default=5,
         help="Number of MAML inner train loop adaptation steps")
     parser.add_argument("--num_test_adapt_steps",
                         type=int,
-                        default=1,
+                        default=15,
                         help="Number of MAML inner test loop adaptation steps")
-    parser.add_argument("--shared_feats",
+    parser.add_argument("--init_all_layers",
                         action="store_true",
-                        help="Whether to share first layer weights in FUMI")
+                        help="Whether to initialise all (vs. last) layer weights in FUMI")
     parser.add_argument("--norm_hypernet",
                         action="store_true",
                         help="Whether to normalize output of the FUMI hypernetwork (tanh)")
@@ -190,12 +190,12 @@ def parser():
     parser.add_argument("--seed", type=int, default=123, help="Random seed")
     parser.add_argument("--patience",
                         type=int,
-                        default=100,
+                        default=10000,
                         help="Early stopping patience")
     parser.add_argument(
         "--eval_freq",
         type=int,
-        default=20,
+        default=500,
         help="Number of batches between validation/checkpointing")
     parser.add_argument("--experiment",
                         type=str,
@@ -207,7 +207,7 @@ def parser():
     parser.add_argument(
         "--num_ep_test",
         type=int,
-        default=1000,
+        default=200,
         help="Number of few-shot episodes to compute test accuracy")
     parser.add_argument("--disable_cuda",
                         action="store_true",
@@ -232,7 +232,7 @@ def init_model(args, dictionary, watch=True):
                           text_hid_dim=args.text_hid_dim,
                           dictionary=dictionary,
                           pooling_strat=args.pooling_strat,
-                          shared_feats=args.shared_feats,
+                          init_all_layers=args.init_all_layers,
                           norm_hypernet=args.norm_hypernet)
     elif args.model == "clip":
         model = clip.CLIP(text_input_dim=args.text_emb_dim,

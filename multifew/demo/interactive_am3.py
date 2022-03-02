@@ -55,7 +55,7 @@ class AM3Explorer():
             'mean', '--remove_stop_words', '--text_type', 'description',
             '--text_emb_dim', '768', '--text_hid_dim', '256', '--step_size',
             '0.01', '--num_train_adapt_steps', '5', '--num_test_adapt_steps',
-            '25', '--shared_feats', '--checkpoint', '249ovl3w', '--evaluate'
+            '25', '--checkpoint', '249ovl3w', '--evaluate'
         ]
         self.data = data
         models, checkpoints = ["am3", "fumi"], ["6ze2cjev", "249ovl3w"]

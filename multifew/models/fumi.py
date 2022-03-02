@@ -24,7 +24,7 @@ class FUMI(nn.Module):
                  text_hid_dim=1024,
                  dictionary=None,
                  pooling_strat="mean",
-                 shared_feats=True,
+                 init_all_layers=False,
                  norm_hypernet=True):
         super(FUMI, self).__init__()
         self.n_way = n_way
@@ -57,6 +57,7 @@ class FUMI(nn.Module):
         else:
             raise NameError(f"{text_encoder} not allowed as text encoder")
 
+        # Todo: Add fine tune argument and condition
         for param in self.text_encoder.parameters():
             param.requires_grad = False
 
@@ -65,8 +66,8 @@ class FUMI(nn.Module):
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
             nn.ReLU()
         ]
-        self.shared_feats = shared_feats
-        if self.shared_feats:
+        self.init_all_layers = init_all_layers
+        if not self.init_all_layers:
             net_layers.append(nn.Linear(
                 self.text_hid_dim,
                 self.im_hid_dim  # Weights
@@ -92,7 +93,7 @@ class FUMI(nn.Module):
 
     def forward(self, text_embed, device):
         im_params = self.net(text_embed)
-        if self.shared_feats:
+        if not self.init_all_layers:
             shared_params = self.first(torch.ones(1).to(device))
             bias_len = self.im_hid_dim + 1
             out = torch.empty(

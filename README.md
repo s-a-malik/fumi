@@ -34,7 +34,7 @@ python main.py --dataset zanim --data_dir "./Dataset" --log_dir "./fumi" \
     --im_encoder precomputed --image_embedding_model resnet-152 \
     --im_emb_dim 2048 --im_hid_dim 64 --text_encoder glove --pooling_strat mean \
     --remove_stop_words --text_type common_name --text_emb_dim 768 --text_hid_dim 256 \
-    --step_size 0.01 --num_train_adapt_steps 5 --num_test_adapt_steps 25 --shared_feats
+    --step_size 0.01 --num_train_adapt_steps 5 --num_test_adapt_steps 25
 ```
 
 ## Cite
