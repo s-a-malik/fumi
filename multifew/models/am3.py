@@ -308,6 +308,10 @@ def training_run(args, model, optimizer, train_loader, val_loader,
     except KeyboardInterrupt:
         pass
 
+    # load best model    
+    best_file = os.path.join(wandb.run.dir, "best.pth.tar")
+    model, _ = utils.load_checkpoint(model, opt, args.device, best_file)
+
     return model
 
 

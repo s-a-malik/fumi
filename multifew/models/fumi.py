@@ -3,11 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import os
 from tqdm import tqdm
-from collections import OrderedDict
 from transformers import BertModel
-from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
-from torchmeta.utils.gradient_based import gradient_update_parameters
 
 from utils.average_meter import AverageMeter
 from utils import utils as utils
@@ -287,6 +285,10 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                 break
     except KeyboardInterrupt:
         pass
+
+    # load best model    
+    best_file = os.path.join(wandb.run.dir, "best.pth.tar")
+    model, _ = utils.load_checkpoint(model, opt, args.device, best_file)
 
     return model
 
