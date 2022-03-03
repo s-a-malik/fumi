@@ -216,12 +216,19 @@ def training_run(args, model, optimizer, train_loader, val_loader,
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
 
+    # check if scheduled
+    if type(optimizer) == tuple:
+        opt, scheduler = optimizer
+    else:
+        opt = optimizer
+        scheduler = None
+
     try:
         # Training loop
         for batch_idx, batch in enumerate(train_loader):
             train_loss, train_acc, _, _ = model.evaluate(args=args,
                                                    batch=batch,
-                                                   optimizer=optimizer,
+                                                   optimizer=opt,
                                                    task="train")
 
             wandb.log(
@@ -250,7 +257,7 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                     "batch_idx": batch_idx,
                     "state_dict": model.state_dict(),
                     "best_loss": best_loss,
-                    "optimizer": optimizer.state_dict(),
+                    "optimizer": opt.state_dict(),
                     "args": vars(args)
                 }
                 utils.save_checkpoint(checkpoint_dict, is_best)
