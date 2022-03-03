@@ -153,10 +153,10 @@ class RnnHid(nn.Module):
         # feed through RNN
         text_embedding_packed = pack_padded_sequence(text_embedding, seq_lens, batch_first=True, enforce_sorted=False)
         self.rnn.flatten_parameters()
-        _, (ht, _) = self.rnn(text_embedding_packed)
+        _, (_, ct) = self.rnn(text_embedding_packed)
 
         # concat forward and backward results (takes hidden states)
-        seq_embed = torch.cat((ht[0], ht[1]), dim=-1)
+        seq_embed = torch.cat((ct[0], ct[1]), dim=-1)
         # unsqueeze
         return seq_embed.view(B, NK, -1)        # (B, N*K, rnn_hid_dim*2)
 
