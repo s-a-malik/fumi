@@ -99,9 +99,6 @@ def parser():
         default="resnet-152",
         help=
         "resnet-152 embedding (2048 dimensions) or resnet-34 (512 dimensions)")
-    parser.add_argument("--precompute_bert",
-                        action="store_true",
-                        help="Whether to precompute BERT embeddings")
 
     # model config
     parser.add_argument("--model",

@@ -52,8 +52,7 @@ def get_dataset(args):
                                                  remove_stop_words,
                                                  args.image_embedding_model,
                                                  args.colab,
-                                                 args.device,
-                                                 args.precompute_bert)
+                                                 args.device)
     elif dataset == "supervised-zanim":
         train, val, test = get_supervised_zanim(data_dir, json_path,
                                                 text_encoder, text_type,
@@ -128,12 +127,13 @@ def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
 def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
               num_shots_test: int, text_encoder: str, text_type: str,
               remove_stop_words: bool, image_embedding_model: str, colab: bool,
-              device: str, precompute_bert: bool):
+              device: str):
 
     token_mode, description_mode = _convert_zanim_arguments(
         text_encoder,
         text_type,
     )
+    precompute_bert = (text_encoder=="BERT")
     train = Zanim(root=data_dir,
                   json_path=json_path,
                   num_classes_per_task=num_way,
@@ -599,7 +599,6 @@ if __name__ == "__main__":
     parser.add_argument('--remove_stop_words',
                         action='store_true',
                         help="whether to remove stop words")
-    parser.add_argument("--precompute_bert", action="store_true")
 
     args = parser.parse_args(sys.argv[1:])
     args.device = torch.device(args.device)
@@ -639,8 +638,7 @@ if __name__ == "__main__":
         remove_stop_words,
         image_embedding_model="resnet-152",
         colab=True,
-        device=args.device,
-        precompute_bert=args.precompute_bert)
+        device=args.device)
     print("dictionary", len(dictionary), dictionary)
     train_loader = BatchMetaDataLoader(train,
                                        batch_size=batch_size,
@@ -653,23 +651,12 @@ if __name__ == "__main__":
         print("train targets")
         print(train_targets.shape, train_targets)
         test_inputs, test_targets = batch['test']
-        if text_encoder == "BERT" and not args.precompute_bert:
-            idx, text, attn_mask, im = train_inputs
-            print("idx")
-            print(idx.shape, idx)
-            print("text")
-            print(text.shape, text)
-            print("attn_mask")
-            print(attn_mask.shape, attn_mask)
-            print("im")
-            print(im.shape, im)
-        else:
-            idx, text, im = train_inputs
-            print("idx")
-            print(idx.shape, idx)
-            print("text")
-            print(text.shape, text)
-            print("im")
-            print(im.shape, im)
+        idx, text, im = train_inputs
+        print("idx")
+        print(idx.shape, idx)
+        print("text")
+        print(text.shape, text)
+        print("im")
+        print(im.shape, im)
         if batch_idx > 1:
             break

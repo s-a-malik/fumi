@@ -5,7 +5,6 @@ import torch.nn.functional as F
 
 import os
 from tqdm import tqdm
-from transformers import BertModel
 
 from utils.average_meter import AverageMeter
 from utils import utils as utils
@@ -38,12 +37,8 @@ class FUMI(nn.Module):
         self.fine_tune = fine_tune
 
         if self.text_encoder_type == "BERT" or self.text_encoder_type == "precomputed":
+            # BERT embeddings precomputed in dataloader
             self.text_encoder = nn.Identity()
-        # if self.text_encoder_type == "BERT":
-        #     self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
-        #     self.text_emb_dim = self.text_encoder.config.hidden_size
-        # elif self.text_encoder_type == "precomputed":
-        #     self.text_encoder = nn.Identity()
         elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
             # load pretrained word embeddings as weights
             self.text_encoder = WordEmbedding(self.text_encoder_type,
@@ -137,12 +132,8 @@ class FUMI(nn.Module):
         test_preds = torch.zeros(test_targets.shape).to(device=args.device)
 
         # Unpack input
-        if self.text_encoder_type == "BERT":
-            _, train_texts, train_attn_masks, train_imss = train_inputs
-            _, test_texts, test_attn_masks, test_imss = test_inputs
-        else:
-            _, train_texts, train_imss = train_inputs
-            _, test_texts, test_imss = test_inputs
+        _, train_texts, train_imss = train_inputs
+        _, test_texts, test_imss = test_inputs
 
         outer_loss = torch.tensor(0., device=args.device)
         accuracy = torch.tensor(0., device=args.device)
@@ -154,13 +145,8 @@ class FUMI(nn.Module):
             else:
                 n_steps = args.num_test_adapt_steps
 
-            if self.text_encoder_type == "BERT":
-                im_params = self.get_im_params(train_texts[task_idx],
-                                               train_target, args.device,
-                                               train_attn_masks[task_idx])
-            else:
-                im_params = self.get_im_params(train_texts[task_idx],
-                                               train_target, args.device)
+            im_params = self.get_im_params(train_texts[task_idx],
+                                            train_target, args.device)
 
             for _ in range(n_steps):
                 train_logit = self.im_forward(train_imss[task_idx], im_params)
@@ -191,14 +177,7 @@ class FUMI(nn.Module):
 
     def get_im_params(self, text, targets, device, attn_mask=None):
         NK, seq_len = text.shape
-        if self.text_encoder_type == "BERT":
-            # Need to reshape batch for BERT input
-            bert_output = self.text_encoder(text.view(-1, seq_len),
-                                            attention_mask=attn_mask.view(
-                                                -1, seq_len))
-            # Get [CLS] token
-            text_encoding = bert_output[1].view(NK, -1)  # (N*K x 768)
-        elif self.text_encoder_type == "rand":
+        if self.text_encoder_type == "rand":
             # Get a random tensor as the encoding
             text_encoding = 2 * torch.rand(NK, self.text_emb_dim) - 1
         else:
