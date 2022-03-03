@@ -140,7 +140,7 @@ def parser():
         "--text_type",
         type=str,
         nargs="+",
-        default="description",
+        default=["description"],
         help=
         "What to use for text embedding (label, description or common_name) can take multiple arguments (appends the different text types) e.g. --text_type label description)"
     )
