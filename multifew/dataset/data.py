@@ -1,4 +1,5 @@
 import json
+from multiprocessing import pool
 import os
 import random
 import subprocess
@@ -50,7 +51,8 @@ def get_dataset(args):
                                                  text_encoder, text_type,
                                                  remove_stop_words,
                                                  args.image_embedding_model,
-                                                 args.colab)
+                                                 args.colab,
+                                                 args.device)
     elif dataset == "supervised-zanim":
         train, val, test = get_supervised_zanim(data_dir, json_path,
                                                 text_encoder, text_type,
@@ -124,12 +126,14 @@ def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
 
 def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
               num_shots_test: int, text_encoder: str, text_type: str,
-              remove_stop_words: bool, image_embedding_model: str, colab: bool):
+              remove_stop_words: bool, image_embedding_model: str, colab: bool,
+              device: str):
 
     token_mode, description_mode = _convert_zanim_arguments(
         text_encoder,
         text_type,
     )
+    precompute_bert = (text_encoder=="BERT")
     train = Zanim(root=data_dir,
                   json_path=json_path,
                   num_classes_per_task=num_way,
@@ -138,7 +142,9 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                   description_mode=description_mode,
                   remove_stop_words=remove_stop_words,
                   image_embedding_model=image_embedding_model,
-                  colab=colab)
+                  colab=colab,
+                  device=device,
+                  precompute_bert=precompute_bert)
     train_split = ClassSplitter(train,
                                 shuffle=True,
                                 num_test_per_class=num_shots_test,
@@ -153,7 +159,9 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                 description_mode=description_mode,
                 remove_stop_words=remove_stop_words,
                 image_embedding_model=image_embedding_model,
-                colab=colab)
+                colab=colab,
+                device=device,
+                precompute_bert=precompute_bert)
     val_split = ClassSplitter(val,
                               shuffle=True,
                               num_test_per_class=int(100 / num_way),
@@ -168,7 +176,9 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                  description_mode=description_mode,
                  remove_stop_words=remove_stop_words,
                  image_embedding_model=image_embedding_model,
-                 colab=colab)
+                 colab=colab,
+                 device=device,
+                 precompute_bert=precompute_bert)
     test_split = ClassSplitter(test,
                                shuffle=True,
                                num_test_per_class=int(100 / num_way),
@@ -299,7 +309,10 @@ class Zanim(CombinationMetaDataset):
                  image_embedding_model='resnet-152',
                  target_transform=None,
                  categories=None,
-                 colab=False):
+                 colab=False,
+                 device=None,
+                 pooling=lambda x: torch.mean(x, dim=1),
+                 precompute_bert=True):
         """
 		:param root: the path to the root directory of the dataset
 		:param json_path: the path to the json file containing the annotations
@@ -320,7 +333,10 @@ class Zanim(CombinationMetaDataset):
             image_embedding_model=image_embedding_model,
             remove_stop_words=remove_stop_words,
             categories=categories,
-            colab=colab)
+            colab=colab,
+            device=device,
+            pooling=pooling,
+            precompute_bert=precompute_bert)
         super().__init__(self.dataset,
                          num_classes_per_task,
                          target_transform=target_transform)
@@ -344,7 +360,10 @@ class ZanimClassDataset(ClassDataset):
                  remove_stop_words=True,
                  image_embedding_model: str = "resnet-152",
                  categories=None,
-                 colab=False):
+                 colab=False,
+                 device=None,
+                 pooling=lambda x: torch.mean(x, dim=1),
+                 precompute_bert=False):
         super().__init__(meta_train=meta_train,
                          meta_val=meta_val,
                          meta_test=meta_test)
@@ -452,6 +471,31 @@ class ZanimClassDataset(ClassDataset):
             ] for d in self.descriptions]
         print("Completed tokenisation")
 
+        self.precompute_bert = precompute_bert
+        if self.precompute_bert:
+            print("Precomputing BERT embeddings")
+            self.model = BertModel.from_pretrained('bert-base-uncased')
+            if device is not None:
+                self.model.to(device)
+            batch_size = 64
+            self._bert_embeddings = torch.zeros(len(self.descriptions),
+                                                self.model.config.hidden_size)
+            for start in range(0, len(self.descriptions), batch_size):
+                with torch.no_grad():
+                    end = min(len(self.descriptions), start + batch_size)
+                    des, mas = (self.descriptions[start:end].to(device),
+                                self.mask[start:end].to(device)
+                                ) if device is not None else (
+                                    self.descriptions[start:end],
+                                    self.mask[start:end])
+                    self._bert_embeddings[start:end] = pooling(
+                        self.model(input_ids=des,
+                                attention_mask=mas,
+                                output_attentions=False).last_hidden_state)
+
+            print("Completed embedding computation")
+            self._bert_embeddings = self._bert_embeddings.cpu()
+
     def _get_descriptions(self, annotations, categories, description_mode):
         descriptions = ["" for i in categories]
         description_json_key_map = {
@@ -491,12 +535,17 @@ class ZanimClassDataset(ClassDataset):
     def __getitem__(self, index):
         indices = self.category_id_map[self.categories[index %
                                                        self.num_classes]]
-        mask = self.mask[
-            index] if self.tokenisation_mode == TokenisationMode.BERT else None
+        if self.precompute_bert:
+            desc = self._bert_embeddings
+            mask = None
+        else:
+            desc = self.descriptions
+            mask = self.mask[
+                index] if self.tokenisation_mode == TokenisationMode.BERT else None
         return ZanimDataset(index,
                             indices,
                             self.image_embeddings[indices],
-                            self.descriptions[index],
+                            desc[index],
                             index % self.num_classes,
                             attention_mask=mask,
                             target_transform=self.get_target_transform(index))
@@ -539,8 +588,9 @@ if __name__ == "__main__":
     import sys
     import argparse
     parser = argparse.ArgumentParser(description="data module test")
-    parser.add_argument("--text_type", type=str, default="label")
+    parser.add_argument("--text_type", type=str, nargs='+', default=["description"])
     parser.add_argument("--json_path", type=str, default="train.json")
+    parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--text_encoder", type=str, default="BERT")
     parser.add_argument(
         "--data_dir",
@@ -551,7 +601,7 @@ if __name__ == "__main__":
                         help="whether to remove stop words")
 
     args = parser.parse_args(sys.argv[1:])
-    args.device = torch.device("cuda")
+    args.device = torch.device(args.device)
     text_type = args.text_type
     text_encoder = args.text_encoder
     num_way = 3
@@ -561,21 +611,21 @@ if __name__ == "__main__":
     remove_stop_words = True if args.remove_stop_words else False
 
     data_dir = args.data_dir
-    train, val, test = get_supervised_zanim(data_dir,
-                                            args.json_path,
-                                            text_encoder,
-                                            text_type,
-                                            remove_stop_words,
-                                            image_embedding_model='resnet-152',
-                                            device=args.device,
-                                            colab=args.colab)
-    for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
-        image, text, cat = batch
-        print(image.shape)
-        print(text.shape)
-        print(cat)
-        if batch_idx > 10:
-            break
+    # train, val, test = get_supervised_zanim(data_dir,
+    #                                         args.json_path,
+    #                                         text_encoder,
+    #                                         text_type,
+    #                                         remove_stop_words,
+    #                                         image_embedding_model='resnet-152',
+    #                                         device=args.device,
+    #                                         colab=True)
+    # for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
+    #     image, text, cat = batch
+    #     print(image.shape)
+    #     print(text.shape)
+    #     print(cat)
+    #     if batch_idx > 10:
+    #         break
 
     train, val, test, dictionary = get_zanim(
         data_dir,
@@ -587,7 +637,8 @@ if __name__ == "__main__":
         text_type,
         remove_stop_words,
         image_embedding_model="resnet-152",
-        colab=args.colab)
+        colab=True,
+        device=args.device)
     print("dictionary", len(dictionary), dictionary)
     train_loader = BatchMetaDataLoader(train,
                                        batch_size=batch_size,
@@ -600,23 +651,12 @@ if __name__ == "__main__":
         print("train targets")
         print(train_targets.shape, train_targets)
         test_inputs, test_targets = batch['test']
-        if text_encoder == "BERT":
-            idx, text, attn_mask, im = train_inputs
-            print("idx")
-            print(idx.shape, idx)
-            print("text")
-            print(text.shape, text)
-            print("attn_mask")
-            print(attn_mask.shape, attn_mask)
-            print("im")
-            print(im.shape, im)
-        else:
-            idx, text, im = train_inputs
-            print("idx")
-            print(idx.shape, idx)
-            print("text")
-            print(text.shape, text)
-            print("im")
-            print(im.shape, im)
+        idx, text, im = train_inputs
+        print("idx")
+        print(idx.shape, idx)
+        print("text")
+        print(text.shape, text)
+        print("im")
+        print(im.shape, im)
         if batch_idx > 1:
             break

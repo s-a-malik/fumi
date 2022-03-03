@@ -143,7 +143,8 @@ class AM3Explorer():
                      description_mode=dmode,
                      remove_stop_words=stop_words,
                      image_embedding_model="resnet-152",
-                     categories=species)
+                     categories=species,
+                     device=args.device)
         test_split = ClassSplitter(test,
                                    shuffle=False,
                                    num_test_per_class=int(100 / 5),

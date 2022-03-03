@@ -146,7 +146,7 @@ def parser():
     )
     parser.add_argument("--text_emb_dim",
                         type=int,
-                        default=512,
+                        default=768,
                         help="Dimension of text embedding (if precomputed)")
     parser.add_argument(
         "--text_hid_dim",
