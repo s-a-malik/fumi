@@ -37,11 +37,13 @@ class FUMI(nn.Module):
         self.norm_hypernet = norm_hypernet
         self.fine_tune = fine_tune
 
-        if self.text_encoder_type == "BERT":
-            self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
-            self.text_emb_dim = self.text_encoder.config.hidden_size
-        elif self.text_encoder_type == "precomputed":
+        if self.text_encoder_type == "BERT" or self.text_encoder_type == "precomputed":
             self.text_encoder = nn.Identity()
+        # if self.text_encoder_type == "BERT":
+        #     self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
+        #     self.text_emb_dim = self.text_encoder.config.hidden_size
+        # elif self.text_encoder_type == "precomputed":
+        #     self.text_encoder = nn.Identity()
         elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
             # load pretrained word embeddings as weights
             self.text_encoder = WordEmbedding(self.text_encoder_type,
