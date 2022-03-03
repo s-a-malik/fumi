@@ -225,12 +225,15 @@ def training_run(args, model, optimizer, train_loader, val_loader,
 
     try:
         # Training loop
+        t = tqdm(total=args.eval_freq, leave=True, position=0, desc='Train')
+        t.refresh()
         for batch_idx, batch in enumerate(train_loader):
             train_loss, train_acc, _, _ = model.evaluate(args=args,
                                                    batch=batch,
                                                    optimizer=opt,
                                                    task="train")
 
+            t.update()
             wandb.log(
                 {
                     "train/acc": train_acc,
@@ -241,6 +244,7 @@ def training_run(args, model, optimizer, train_loader, val_loader,
 
             # Eval on validation set periodically
             if batch_idx % args.eval_freq == 0 and batch_idx != 0:
+                t.close()
                 val_loss, val_acc, _, _ = test_loop(args, model, val_loader,
                                               max_test_batches)
                 is_best = val_loss < best_loss
@@ -265,6 +269,9 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                 print(
                     f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
                     f"\nval/loss: {val_loss}, val/acc: {val_acc}")
+
+                t = tqdm(total=args.eval_freq, leave=True, position=0, desc='Train batch')
+                t.refresh()
 
             # break after max iters or early stopping
             if (batch_idx > args.epochs - 1) or (
@@ -294,7 +301,7 @@ def test_loop(args, model, test_loader, max_num_batches):
     test_preds = []
     test_targets = []
     for batch_idx, batch in enumerate(
-            tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
+            tqdm(test_loader, total=max_num_batches, position=1, leave=True, desc='Test')):
         test_loss, test_acc, preds, target = model.evaluate(args=args,
                                                             batch=batch,
                                                             optimizer=None,
