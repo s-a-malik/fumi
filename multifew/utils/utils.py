@@ -187,7 +187,7 @@ def parser():
                         help="Dimension of CLIP latent space")
 
     # run config
-    parser.add_argument("--seed", type=int, default=123, help="Random seed")
+    parser.add_argument("--seed", type=int, default=123, help="patience for early stopping")
     parser.add_argument("--patience",
                         type=int,
                         default=10000,
