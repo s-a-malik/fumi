@@ -395,9 +395,11 @@ def save_checkpoint(checkpoint_dict: dict, is_best: bool):
     checkpoint_file = os.path.join(wandb.run.dir, "ckpt.pth.tar")
     best_file = os.path.join(wandb.run.dir, "best.pth.tar")
     torch.save(checkpoint_dict, checkpoint_file)
+    wandb.save(checkpoint_file)
 
     if is_best:
         shutil.copyfile(checkpoint_file, best_file)
+        wandb.save(best_file)
 
 
 def load_checkpoint(model, optimizer, device, checkpoint_file: str):
