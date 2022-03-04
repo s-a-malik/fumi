@@ -301,7 +301,7 @@ def test_loop(args, model, test_loader, max_num_batches):
     test_preds = []
     test_targets = []
     for batch_idx, batch in enumerate(
-            tqdm(test_loader, total=max_num_batches, position=1, leave=True, desc='Test')):
+            tqdm(test_loader, total=max_num_batches, position=0, leave=True, desc='Test')):
         test_loss, test_acc, preds, target = model.evaluate(args=args,
                                                             batch=batch,
                                                             optimizer=None,
