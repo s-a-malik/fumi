@@ -575,7 +575,7 @@ class ZanimDataset(Dataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
         if self.attention_mask is None:
-            return (self.image_ids[index], torch.tensor(self.description),
+            return (self.image_ids[index], self.description.clone().detach(),
                     self.data[index]), target
         else:
             return (self.image_ids[index], torch.tensor(self.description),
