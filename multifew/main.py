@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import wandb
+import random
 
 import numpy as np
 import pandas as pd
@@ -17,10 +18,6 @@ import utils.utils as utils
 
 
 def main(args):
-    # random seeds
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-    # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
 
     # set up directories and logs
     results_path = f"{args.log_dir}/results"
@@ -51,6 +48,13 @@ def main(args):
     train_loader, val_loader, test_loader, dictionary = get_dataset(args)
     # TODO fix this to give exactly 1000 episodes. Change in test dataloader probs.
     max_test_batches = int(args.num_ep_test / args.batch_size)
+
+    # random seeds
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
+
 
     # initialise model and optim
     model = utils.init_model(args, dictionary)
