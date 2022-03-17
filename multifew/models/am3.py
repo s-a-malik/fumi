@@ -25,7 +25,8 @@ class AM3(nn.Module):
                  dropout=0.7,
                  fine_tune=False,
                  dictionary=None,
-                 pooling_strat="mean"):
+                 pooling_strat="mean",
+                 lamda_fixed=None):
         super(AM3, self).__init__()
         self.im_emb_dim = im_emb_dim  # image embedding size
         self.text_encoder_type = text_encoder
@@ -36,6 +37,7 @@ class AM3(nn.Module):
         self.fine_tune = fine_tune
         self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
+        self.lamda_fixed = lamda_fixed
 
         if im_encoder == "precomputed":
             # if using precomputed embeddings
@@ -191,9 +193,13 @@ class AM3(nn.Module):
         test_im_embeddings = self(test_inputs,
                                   im_only=True)  # only get image prototype
 
-        # TODO try using lambda = 0 or 1
-        # train_lamda = torch.ones_like(train_lamda).to(device)
-        # train_lamda = torch.zeros_like(train_lamda).to(device)
+        # lambda set to 0 or 1
+        if self.lamda_fixed == 0:
+            train_lamda = torch.zeros_like(train_targets).to(device)
+        elif self.lamda_fixed == 1:
+            train_lamda = torch.ones_like(train_targets).to(device)
+        else:
+            train_lamda = train_lamda
 
         # construct prototypes
         prototypes = utils.get_prototypes(train_im_embeddings,

@@ -179,6 +179,11 @@ def parser():
     parser.add_argument("--norm_hypernet",
                         action="store_true",
                         help="Whether to normalize output of the FUMI hypernetwork (tanh)")
+    # lambda fixed for am3
+    parser.add_argument("--lamda-fixed",
+                        default=None,
+                        type=int,
+                        help="Lambda fixed for am3")
 
     # clip config
     parser.add_argument("--clip_latent_dim",
