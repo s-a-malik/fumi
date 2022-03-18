@@ -254,7 +254,8 @@ def init_model(args, dictionary, watch=True):
                         dropout=args.dropout,
                         fine_tune=args.fine_tune,
                         dictionary=dictionary,
-                        pooling_strat=args.pooling_strat)
+                        pooling_strat=args.pooling_strat,
+                        lamda_fixed=args.lamda_fixed)
 
     if watch:
         wandb.watch(model, log="all")  #  for tracking gradients etc.
