@@ -195,9 +195,9 @@ class AM3(nn.Module):
 
         # lambda set to 0 or 1
         if self.lamda_fixed == 0:
-            train_lamda = torch.zeros_like(train_targets).to(device)
+            train_lamda = torch.zeros_like(train_lamda).to(device)
         elif self.lamda_fixed == 1:
-            train_lamda = torch.ones_like(train_targets).to(device)
+            train_lamda = torch.ones_like(train_lamda).to(device)
         else:
             train_lamda = train_lamda
 
