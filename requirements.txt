@@ -2,7 +2,7 @@ Pillow==9.0.0
 protobuf==3.19.1
 matplotlib==3.4.3
 ipywidgets==7.6.5
-ipython==7.30.1
+ipython==7.31.1
 scikit_learn==1.0.1
 tqdm==4.60.0
 torchvision==0.9.1
