@@ -1,4 +1,4 @@
-Pillow==9.0.0
+Pillow==9.0.1
 protobuf==3.19.1
 matplotlib==3.4.3
 ipywidgets==7.6.5
