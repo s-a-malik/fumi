@@ -156,7 +156,7 @@ def parser():
         help="Hidden dimension for NN mapping to prototypes and lamda")
     parser.add_argument("--dropout",
                         type=float,
-                        default=0.7,
+                        default=0.0,
                         help="Dropout rate")
     parser.add_argument("--step_size",
                         type=float,
