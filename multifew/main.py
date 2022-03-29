@@ -88,7 +88,7 @@ def main(args):
             model = fumi.training_run(args, model, optimizer, train_loader,
                                       val_loader, max_test_batches)
         elif args.model == 'clip':
-            clip.training_run(args,
+            model = clip.training_run(args,
                               model,
                               optimizer,
                               train_loader,

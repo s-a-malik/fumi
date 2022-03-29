@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 
+import os
+
 import wandb
 from utils.average_meter import AverageMeter
 from utils import utils as utils
@@ -83,8 +85,8 @@ def evaluate(args, model, data):
 def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
     device = args.device
 
-    init_val_acc = evaluate(args, model, val_loader)
-    print('init val_acc', init_val_acc)
+    best_acc = evaluate(args, model, val_loader)
+    print('init val_acc', best_acc)
 
     for epoch in range(n_epochs):
         model.train()
@@ -126,3 +128,27 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
         val_acc = evaluate(args, model, val_loader)
         print('epoch', epoch, 'val_acc', val_acc)
         wandb.log({'val/acc': val_acc}, step=epoch)
+        is_best = val_acc < best_acc
+        if is_best:
+            best_acc = val_acc
+            best_epoch = epoch
+
+        # save checkpoint
+        checkpoint_dict = {
+            "epoch": epoch,
+            "state_dict": model.state_dict(),
+            "best_acc": best_acc,
+            "optimizer": optimizer.state_dict(),
+            "args": vars(args)
+        }
+        utils.save_checkpoint(checkpoint_dict, is_best)
+
+        # break after max iters or early stopping
+        if (args.patience > 0 and epoch - best_epoch > args.patience):
+            break
+
+    # load best model    
+    best_file = os.path.join(wandb.run.dir, "best.pth.tar")
+    model, _ = utils.load_checkpoint(model, optimizer, args.device, best_file)
+
+    return model
