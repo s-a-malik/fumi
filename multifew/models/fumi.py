@@ -87,9 +87,6 @@ class FUMI(nn.Module):
                     im_net_layers['relu'+str(i+1)] = nn.ReLU()
                     if self.dropout_rate > 0:
                         im_net_layers['dropout'+str(i+1)] = nn.Dropout(self.dropout_rate)
-                im_net_layers['linear_final'] = MetaLinear(self.im_hid_dim[-1], self.n_way)
-            else:
-                im_net_layers['linear_final'] = MetaLinear(self.im_emb_dim, self.n_way)
             self.im_net = MetaSequential(im_net_layers)
         else:
             raise NotImplementedError("Entire model hypernet initialisation removed")
@@ -146,24 +143,29 @@ class FUMI(nn.Module):
             else:
                 n_steps = args.num_test_adapt_steps
 
-            im_params = self.get_im_params(train_texts[task_idx],
-                                           train_target, args.device)
+            hyper_params = self.get_hyper_params(train_texts[task_idx],
+                                              train_target, args.device)
 
-            # Initialise image network, see https://discuss.pytorch.org/t/autograd-isnt-functioning-when-networkss-parameters-are-taken-from-other-networks/27424/6
-            self.im_net.linear_final.weight.copy_(im_params[:, :-1])
-            self.im_net.linear_final.bias.copy_(im_params[:, -1])
-            params = self.im_net.parameters()
+            im_params = OrderedDict(self.im_net.meta_named_parameters())
             for _ in range(n_steps):
-                train_logit = self.im_net(train_imss[task_idx], params=params)
+                train_logit = self.im_forward(train_imss[task_idx], im_params, hyper_params)
                 inner_loss = F.cross_entropy(train_logit, train_target)
-                self.im_net.zero_grad()
-                params = gradient_update_parameters(model,
-                                                    inner_loss,
-                                                    params=params,
-                                                    step_size=args.step_size,
-                                                    first_order=args.first_order)
 
-            test_logit = self.im_forward(test_imss[task_idx], params=params)
+                # Update hypernetwork output
+                grads = torch.autograd.grad(inner_loss,
+                                            hyper_params,
+                                            create_graph=not args.first_order)
+                hyper_params -= args.step_size * grads[0]
+
+                # Update model parameters
+                self.im_net.zero_grad()
+                im_params = gradient_update_parameters(self.im_net,
+                                                       inner_loss,
+                                                       params=im_params,
+                                                       step_size=args.step_size,
+                                                       first_order=args.first_order)
+
+            test_logit = self.im_net(test_imss[task_idx], im_params, hyper_params)
             _, test_preds[task_idx] = test_logit.max(dim=-1)
 
             outer_loss += F.cross_entropy(test_logit, test_target)
@@ -182,7 +184,7 @@ class FUMI(nn.Module):
         return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu(
         ).numpy(), test_preds, test_targets
 
-    def get_im_params(self, text, targets, device, attn_mask=None):
+    def get_hyper_params(self, text, targets, device, attn_mask=None):
         NK, seq_len = text.shape
         if self.text_encoder_type == "rand":
             # Get a random tensor as the encoding
@@ -198,6 +200,9 @@ class FUMI(nn.Module):
 
         return self(class_text_enc)
 
+    def im_forward(self, im_embeds, im_params, hyper_params):
+        out = self.im_net(im_embeds, params=im_params)
+        return torch.matmul(out, hyper_params[:, :-1]) + hyper_params[:, -1]
 
 def training_run(args, model, optimizer, train_loader, val_loader,
                  max_test_batches):
