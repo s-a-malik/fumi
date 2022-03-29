@@ -2,9 +2,12 @@ import wandb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchmeta.modules import (MetaSequential, MetaLinear)
+from torchmeta.utils.gradient_based import gradient_update_parameters
 
 import os
 from tqdm import tqdm
+from collections import OrderedDict
 
 from utils.average_meter import AverageMeter
 from utils import utils as utils
@@ -15,10 +18,11 @@ class FUMI(nn.Module):
     def __init__(self,
                  n_way=5,
                  im_emb_dim=2048,
-                 im_hid_dim=32,
+                 im_hid_dim=[64],
                  text_encoder="BERT",
                  text_emb_dim=300,
                  text_hid_dim=1024,
+                 dropout_rate=0.0,
                  dictionary=None,
                  pooling_strat="mean",
                  init_all_layers=False,
@@ -31,6 +35,7 @@ class FUMI(nn.Module):
         self.text_encoder_type = text_encoder
         self.text_emb_dim = text_emb_dim  # only applicable if precomputed or RNN hid dim
         self.text_hid_dim = text_hid_dim
+        self.dropout_rate = dropout_rate
         self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
         self.norm_hypernet = norm_hypernet
@@ -59,50 +64,46 @@ class FUMI(nn.Module):
                 param.requires_grad = False
 
         # Text embedding to image parameters
-        net_layers = [
+        hyper_net_layers = [
             nn.Linear(self.text_emb_dim, self.text_hid_dim),
             nn.ReLU()
         ]
         self.init_all_layers = init_all_layers
         if not self.init_all_layers:
-            net_layers.append(nn.Linear(
+            hyper_net_layers.append(nn.Linear(
                 self.text_hid_dim,
-                self.im_hid_dim  # Weights
+                self.im_hid_dim[-1]  # Weights
                 + 1)  # Biases
             )
-            # Bit of a hack to copy torch default weight initialisation
-            self.first = nn.Linear(
-                1,
-                self.im_hid_dim * self.im_emb_dim  # Weights
-                + self.im_hid_dim,  # Biases
-                bias=False)
+            # Preceding layers
+            im_net_layers = OrderedDict()
+            if len(self.im_hid_dim) > 0:
+                im_net_layers['linear0'] = MetaLinear(self.im_emb_dim, self.im_hid_dim[0])
+                im_net_layers['relu0'] = nn.ReLU()
+                if self.dropout_rate > 0:
+                    im_net_layers['dropout0'] = nn.Dropout(self.dropout_rate)
+                for i in range(len(self.im_hid_dim)-1):
+                    im_net_layers['linear'+str(i+1)] = MetaLinear(self.im_hid_dim[i], self.im_hid_dim[i+1])
+                    im_net_layers['relu'+str(i+1)] = nn.ReLU()
+                    if self.dropout_rate > 0:
+                        im_net_layers['dropout'+str(i+1)] = nn.Dropout(self.dropout_rate)
+                im_net_layers['linear_final'] = MetaLinear(self.im_hid_dim[-1], self.n_way)
+            else:
+                im_net_layers['linear_final'] = MetaLinear(self.im_emb_dim, self.n_way)
+            self.im_net = MetaSequential(im_net_layers)
         else:
-            net_layers.append(nn.Linear(
-                    self.text_hid_dim,
-                    self.im_hid_dim * (self.im_emb_dim + 1)  # Weights
-                    + self.im_hid_dim + 1)  # Biases
-            )
+            raise NotImplementedError("Entire model hypernet initialisation removed")
 
         if self.norm_hypernet:
-            net_layers.append(nn.Tanh())
+            hyper_net_layers.append(nn.Tanh())
 
-        self.net = nn.Sequential(*net_layers)
+        self.hyper_net = nn.Sequential(*hyper_net_layers)
 
-    def forward(self, text_embed, device):
-        im_params = self.net(text_embed)
-        if not self.init_all_layers:
-            shared_params = self.first(torch.ones(1).to(device))
-            bias_len = self.im_hid_dim + 1
-            out = torch.empty(
-                len(text_embed),
-                self.im_hid_dim * (self.im_emb_dim + 1) + self.im_hid_dim +
-                1).to(device)
-            out[:, :bias_len - 1] = shared_params[:bias_len - 1]
-            out[:, bias_len - 1] = im_params[:, 0]
-            out[:, bias_len:-self.im_hid_dim] = shared_params[bias_len - 1:]
-            out[:, -self.im_hid_dim:] = im_params[:, 1:]
-            return out
-        return im_params
+    def forward(self, text_embed):
+        """
+        Hyper-network forward pass (text -> image params)
+        """
+        return self.hyper_net(text_embed)
 
     def evaluate(self, args, batch, optimizer, task="train"):
         """
@@ -146,17 +147,23 @@ class FUMI(nn.Module):
                 n_steps = args.num_test_adapt_steps
 
             im_params = self.get_im_params(train_texts[task_idx],
-                                            train_target, args.device)
+                                           train_target, args.device)
 
+            # Initialise image network, see https://discuss.pytorch.org/t/autograd-isnt-functioning-when-networkss-parameters-are-taken-from-other-networks/27424/6
+            self.im_net.linear_final.weight.copy_(im_params[:, :-1])
+            self.im_net.linear_final.bias.copy_(im_params[:, -1])
+            params = self.im_net.parameters()
             for _ in range(n_steps):
-                train_logit = self.im_forward(train_imss[task_idx], im_params)
+                train_logit = self.im_net(train_imss[task_idx], params=params)
                 inner_loss = F.cross_entropy(train_logit, train_target)
-                grads = torch.autograd.grad(inner_loss,
-                                            im_params,
-                                            create_graph=not args.first_order)
-                im_params -= args.step_size * grads[0]
+                self.im_net.zero_grad()
+                params = gradient_update_parameters(model,
+                                                    inner_loss,
+                                                    params=params,
+                                                    step_size=args.step_size,
+                                                    first_order=args.first_order)
 
-            test_logit = self.im_forward(test_imss[task_idx], im_params)
+            test_logit = self.im_forward(test_imss[task_idx], params=params)
             _, test_preds[task_idx] = test_logit.max(dim=-1)
 
             outer_loss += F.cross_entropy(test_logit, test_target)
@@ -189,21 +196,7 @@ class FUMI(nn.Module):
             class_text_enc[i] = text_encoding[(targets == i).nonzero(
                 as_tuple=True)[0][0]]
 
-        return self(class_text_enc, device)
-
-    def im_forward(self, im_embeds, im_params):
-        bias_len = self.im_hid_dim + 1
-        b_im = torch.unsqueeze(im_params[:, :bias_len], 2)
-        w_im = im_params[:, bias_len:].view(-1, self.im_emb_dim + 1,
-                                            self.im_hid_dim)
-
-        a = torch.matmul(im_embeds, w_im[:, :-1])
-        h = F.relu(torch.transpose(a, 1, 2) + b_im[:, :-1])
-
-        a_out = torch.matmul(torch.transpose(h, 1, 2),
-                             torch.unsqueeze(w_im[:, -1], 2))
-        out = torch.squeeze(a_out) + b_im[:, -1]
-        return torch.transpose(out, 0, 1)
+        return self(class_text_enc)
 
 
 def training_run(args, model, optimizer, train_loader, val_loader,

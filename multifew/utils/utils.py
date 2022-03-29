@@ -120,7 +120,8 @@ def parser():
                         help="Dimension of image embedding (if precomputed)")
     parser.add_argument("--im_hid_dim",
                         type=int,
-                        default=64,
+                        nargs='+',
+                        default=[64],
                         help="Hidden dimension of image model")
     parser.add_argument(
         "--text_encoder",
@@ -235,6 +236,7 @@ def init_model(args, dictionary, watch=True):
                           text_encoder=args.text_encoder,
                           text_emb_dim=args.text_emb_dim,
                           text_hid_dim=args.text_hid_dim,
+                          dropout_rate=args.dropout,
                           dictionary=dictionary,
                           pooling_strat=args.pooling_strat,
                           init_all_layers=args.init_all_layers,
