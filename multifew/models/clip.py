@@ -129,7 +129,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
         val_acc = evaluate(args, model, val_loader)
         print('epoch', epoch, 'val_acc', val_acc)
         wandb.log({'val/acc': val_acc}, step=epoch)
-        is_best = val_acc < best_acc
+        is_best = val_acc > best_acc
         if is_best:
             best_acc = val_acc
             best_epoch = epoch
