@@ -426,7 +426,7 @@ def load_checkpoint(model, optimizer, device, checkpoint_file: str):
     optimizer.load_state_dict(checkpoint["optimizer"])
     print(
         f"Loaded {checkpoint_file}, "
-        f"trained to epoch {checkpoint['batch_idx']} with best loss {checkpoint['best_loss']}"
+        f"trained to epoch {checkpoint['batch_idx']} with best loss (acc for CLIP) {checkpoint['best_loss']}"
     )
 
     return model, optimizer

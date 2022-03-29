@@ -136,9 +136,9 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
 
         # save checkpoint
         checkpoint_dict = {
-            "epoch": epoch,
+            "batch_idx": epoch,
             "state_dict": model.state_dict(),
-            "best_acc": best_acc,
+            "best_loss": best_acc,
             "optimizer": optimizer.state_dict(),
             "args": vars(args)
         }
