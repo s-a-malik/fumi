@@ -86,6 +86,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
     device = args.device
 
     best_acc = evaluate(args, model, val_loader)
+    best_epoch = 0
     print('init val_acc', best_acc)
 
     for epoch in range(n_epochs):
