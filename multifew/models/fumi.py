@@ -144,7 +144,7 @@ class FUMI(nn.Module):
                 n_steps = args.num_test_adapt_steps
 
             hyper_params = self.get_hyper_params(train_texts[task_idx],
-                                              train_target, args.device)
+                                                 train_target, args.device)
 
             im_params = OrderedDict(self.im_net.meta_named_parameters())
             for _ in range(n_steps):
@@ -154,7 +154,7 @@ class FUMI(nn.Module):
                 # Update hypernetwork output
                 grads = torch.autograd.grad(inner_loss,
                                             hyper_params,
-                                            create_graph=not args.first_order)
+                                            create_graph=True)
                 hyper_params -= args.step_size * grads[0]
 
                 # Update model parameters
@@ -163,9 +163,10 @@ class FUMI(nn.Module):
                                                        inner_loss,
                                                        params=im_params,
                                                        step_size=args.step_size,
-                                                       first_order=args.first_order)
+                                                       first_order=False)
 
-            test_logit = self.im_net(test_imss[task_idx], im_params, hyper_params)
+            test_logit = self.im_forward(test_imss[task_idx], im_params, hyper_params)
+
             _, test_preds[task_idx] = test_logit.max(dim=-1)
 
             outer_loss += F.cross_entropy(test_logit, test_target)
@@ -202,7 +203,9 @@ class FUMI(nn.Module):
 
     def im_forward(self, im_embeds, im_params, hyper_params):
         out = self.im_net(im_embeds, params=im_params)
-        return torch.matmul(out, hyper_params[:, :-1]) + hyper_params[:, -1]
+        out = torch.matmul(out, torch.unsqueeze(hyper_params[:, :-1], 2))
+        out = torch.squeeze(out) + torch.unsqueeze(hyper_params[:, -1], 1)
+        return torch.transpose(out, 0, 1)
 
 def training_run(args, model, optimizer, train_loader, val_loader,
                  max_test_batches):
