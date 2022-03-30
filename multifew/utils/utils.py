@@ -205,7 +205,7 @@ def parser():
     parser.add_argument(
         "--eval_freq",
         type=int,
-        default=500,
+        default=2500,
         help="Number of batches between validation/checkpointing")
     parser.add_argument("--experiment",
                         type=str,

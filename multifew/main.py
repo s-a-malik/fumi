@@ -83,10 +83,10 @@ def main(args):
     if not args.evaluate:
         if args.model == "maml":
             model = maml.training_run(args, model, optimizer, train_loader,
-                                      val_loader, max_test_batches // 5)
+                                      val_loader, max_test_batches // 2)
         elif args.model == "fumi":
             model = fumi.training_run(args, model, optimizer, train_loader,
-                                      val_loader, max_test_batches // 5)
+                                      val_loader, max_test_batches // 2)
         elif args.model == 'clip':
             model = clip.training_run(args,
                               model,
@@ -96,7 +96,7 @@ def main(args):
                               n_epochs=args.epochs)
         else:
             model = am3.training_run(args, model, optimizer, train_loader,
-                                     val_loader, max_test_batches // 5)
+                                     val_loader, max_test_batches // 2)
 
     # test
     if args.model in ["maml", "fumi"]:
