@@ -213,7 +213,7 @@ def parser():
     parser.add_argument(
         "--num_ep_test",
         type=int,
-        default=200,
+        default=1000,
         help="Number of few-shot episodes to compute test accuracy")
     parser.add_argument("--disable_cuda",
                         action="store_true",
