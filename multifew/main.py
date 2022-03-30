@@ -25,7 +25,7 @@ def main(args):
     # TODO changing the dir doesn't seem to work on colab
     os.environ["GENSIM_DATA_DIR"] = f"{args.log_dir}/word_embeddings"
     job_type = "eval" if args.evaluate else "train"
-    run = wandb.init(entity="multimodal-image-cls",
+    run = wandb.init(entity=args.wandb_entity,
                      project=args.model,
                      group=args.experiment,
                      job_type=job_type,

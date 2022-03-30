@@ -21,6 +21,10 @@ def parser():
         description="Multimodal image classification")
 
     # data config
+    parser.add_argument("--wandb_entity",
+                        type=str,
+                        default="multimodal-image-cls",
+                        help="W&B entity")
     parser.add_argument("--dataset",
                         type=str,
                         default="zanim",
