@@ -13,16 +13,20 @@ from utils import utils as utils
 
 
 class PureImageNetwork(MetaModule):
-    def __init__(self, im_embed_dim=2048, n_way=5, hidden=64):
+    def __init__(self, im_embed_dim=2048, n_way=5, hidden_dims=None):
         super(PureImageNetwork, self).__init__()
         self.im_embed_dim = im_embed_dim
         self.n_way = n_way
-        self.hidden = hidden
 
-        self.net = MetaSequential(
-            OrderedDict([('lin1', MetaLinear(im_embed_dim, hidden)),
-                         ('relu', nn.ReLU()),
-                         ('lin2', MetaLinear(hidden, n_way))]))
+        layers = OrderedDict()
+        in_dim = im_embed_dim
+        if hidden_dims != None:
+            for i, hid_dim in enumerate(hidden_dims):
+                layers['lin_'+str(i)] = MetaLinear(in_dim, hid_dim)
+                layers['relu_'+str(i)] = nn.ReLU()
+                in_dim = hid_dim
+        layers['lin_final'] = MetaLinear(in_dim, n_way)
+        self.net = MetaSequential(layers)
 
     def forward(self, inputs, params=None):
         logits = self.net(inputs, params=self.get_subdict(params, 'net'))
