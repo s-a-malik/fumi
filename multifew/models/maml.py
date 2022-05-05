@@ -48,6 +48,8 @@ def training_run(args, model, optimizer, train_loader, val_loader,
 
     try:
         # Training loop
+        t = tqdm(total=args.eval_freq, leave=True, position=0, desc='Train')
+        t.refresh()
         for batch_idx, batch in enumerate(train_loader):
             train_loss, train_acc = evaluate(args=args,
                                              model=model,
@@ -55,6 +57,7 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                                              optimizer=optimizer,
                                              task="train")
 
+            t.update()
             wandb.log(
                 {
                     "train/acc": train_acc,
@@ -64,7 +67,7 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                 step=batch_idx)
 
             # Eval on validation set periodically
-            if batch_idx % args.eval_freq == 0:
+            if batch_idx % args.eval_freq == 0 and batch_idx != 0:
                 val_loss, val_acc = test_loop(args, model, val_loader,
                                               max_test_batches)
                 is_best = val_loss < best_loss
@@ -90,6 +93,9 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                     f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
                     f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
+                t = tqdm(total=args.eval_freq, leave=True, position=0, desc='Train')
+                t.refresh()
+
             # break after max iters or early stopping
             if (batch_idx > args.epochs - 1) or (
                     args.patience > 0
@@ -112,7 +118,7 @@ def test_loop(args, model, test_loader, max_num_batches):
     avg_test_acc = AverageMeter()
     avg_test_loss = AverageMeter()
     for batch_idx, batch in enumerate(
-            tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
+            tqdm(test_loader, total=max_num_batches, position=0, leave=True, desc='Test')):
         test_loss, test_acc = evaluate(args=args,
                                        model=model,
                                        batch=batch,
