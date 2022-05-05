@@ -139,12 +139,12 @@ def evaluate(args, model, batch, optimizer, task="train"):
 
     # Support set
     train_inputs, train_targets = batch['train']
-    train_inputs = train_inputs[3].to(device=args.device)
+    train_inputs = train_inputs[2].to(device=args.device)
     train_targets = train_targets.to(device=args.device)
 
     # Query set
     test_inputs, test_targets = batch['test']
-    test_inputs = test_inputs[3].to(device=args.device)
+    test_inputs = test_inputs[2].to(device=args.device)
     test_targets = test_targets.to(device=args.device)
 
     outer_loss = torch.tensor(0., device=args.device)
