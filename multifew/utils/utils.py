@@ -232,7 +232,7 @@ def init_model(args, dictionary, watch=True):
     if args.model == "maml":
         model = maml.PureImageNetwork(im_embed_dim=args.im_emb_dim,
                                       n_way=args.num_ways,
-                                      hidden=args.im_hid_dim)
+                                      hidden_dims=args.im_hid_dim)
     elif args.model == "fumi":
         model = fumi.FUMI(n_way=args.num_ways,
                           im_emb_dim=args.im_emb_dim,
