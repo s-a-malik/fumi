@@ -1,14 +1,11 @@
 """
 Based on https://github.com/ikostrikov/pytorch-a2c-ppo-acktr
 """
-import gym
 import math
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from utils import helpers as utl
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
