@@ -12,7 +12,7 @@ from collections import OrderedDict
 from utils.average_meter import AverageMeter
 from utils import utils as utils
 from .common import WordEmbedding, RnnHid, RNN
-
+from utils.hypernet_init import hyper_weight_layer_init
 
 class FUMI(nn.Module):
     def __init__(self,
@@ -27,7 +27,8 @@ class FUMI(nn.Module):
                  pooling_strat="mean",
                  init_all_layers=False,
                  norm_hypernet=True,
-                 fine_tune=False):
+                 fine_tune=False,
+                 init_bias=False):
         super(FUMI, self).__init__()
         self.n_way = n_way
         self.im_emb_dim = im_emb_dim
@@ -40,6 +41,7 @@ class FUMI(nn.Module):
         self.pooling_strat = pooling_strat
         self.norm_hypernet = norm_hypernet
         self.fine_tune = fine_tune
+        self.init_bias = init_bias
 
         if self.text_encoder_type == "BERT" or self.text_encoder_type == "precomputed":
             # BERT embeddings precomputed in dataloader
@@ -70,11 +72,18 @@ class FUMI(nn.Module):
         ]
         self.init_all_layers = init_all_layers
         if not self.init_all_layers:
-            hyper_net_layers.append(nn.Linear(
+            hyper_net_head = nn.Linear(
                 self.text_hid_dim,
                 self.im_hid_dim[-1]  # Weights
                 + 1)  # Biases
-            )
+
+            if self.init_bias:
+                init_fn = hyper_weight_layer_init('relu', 'normc', self.text_hid_dim, self.im_hid_dim[-1]+1, 1,
+                                                  False, adjust_weights=False, adjust_bias=True, use_film=False)
+                hyper_net_layers.append(init_fn(hyper_net_head))
+            else:
+                hyper_net_layers.append(hyper_net_head)
+
             # Preceding layers
             im_net_layers = OrderedDict()
             if len(self.im_hid_dim) > 0:

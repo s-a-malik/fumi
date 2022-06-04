@@ -184,6 +184,9 @@ def parser():
     parser.add_argument("--norm_hypernet",
                         action="store_true",
                         help="Whether to normalize output of the FUMI hypernetwork (tanh)")
+    parser.add_argument("--hypernet_bias_init",
+                        action="store_true",
+                        help="Whether to initialise hypernet bias for policy")
     # lambda fixed for am3
     parser.add_argument("--lamda_fixed",
                         default=None,
@@ -245,7 +248,8 @@ def init_model(args, dictionary, watch=True):
                           pooling_strat=args.pooling_strat,
                           init_all_layers=args.init_all_layers,
                           norm_hypernet=args.norm_hypernet,
-                          fine_tune=args.fine_tune)
+                          fine_tune=args.fine_tune,
+                          init_bias=args.hypernet_bias_init)
     elif args.model == "clip":
         model = clip.CLIP(text_input_dim=args.text_emb_dim,
                           image_input_dim=args.im_emb_dim,
