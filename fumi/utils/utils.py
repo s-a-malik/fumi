@@ -59,7 +59,7 @@ def parser():
                         default=50000,
                         help="Number of meta-learning batches to train for")
     parser.add_argument("--optim", type=str, default="adam", help="Optimiser")
-    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=3e-5, help="Learning rate")
     parser.add_argument("--momentum",
                         type=float,
                         default=0.9,
@@ -80,7 +80,7 @@ def parser():
     # dataloader config
     parser.add_argument("--num_shots",
                         type=int,
-                        default=3,
+                        default=5,
                         help="Number of examples per class (k-shot)")
     parser.add_argument("--num_ways",
                         type=int,
@@ -125,7 +125,7 @@ def parser():
     parser.add_argument("--im_hid_dim",
                         type=int,
                         nargs='+',
-                        default=[64],
+                        default=[256, 64],
                         help="Hidden dimension of image model")
     parser.add_argument(
         "--text_encoder",
@@ -160,7 +160,7 @@ def parser():
         help="Hidden dimension for NN mapping to prototypes and lamda")
     parser.add_argument("--dropout",
                         type=float,
-                        default=0.0,
+                        default=0.25,
                         help="Dropout rate")
     parser.add_argument("--step_size",
                         type=float,
@@ -176,7 +176,7 @@ def parser():
         help="Number of MAML inner train loop adaptation steps")
     parser.add_argument("--num_test_adapt_steps",
                         type=int,
-                        default=15,
+                        default=100,
                         help="Number of MAML inner test loop adaptation steps")
     parser.add_argument("--init_all_layers",
                         action="store_true",

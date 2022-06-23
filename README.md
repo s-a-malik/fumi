@@ -17,7 +17,7 @@ iNat-Anim is a dataset specifically designed to benchmark few-shot and multi-mod
 
 The dataset is hosted on Zenodo [here (TODO)]().
 
-You can explore the dataset using the demo in the `notebooks` directory.
+You can explore the dataset using the demo in the `notebooks` directory, which can be opened in Google Colab. 
 
 ## Models
 
@@ -33,10 +33,11 @@ All experimental conditions and hyperparameters are set via command line argumen
 
 For example, to train FuMI:
 ```bash
-python main.py --data_dir "./dataset" --log_dir "./fumi" --wandb_entity "YOUR_WANDB" \
-   --model fumi --patience 10000 --dropout 0.25 --im_hid_dim 256 64 --lr 3e-5 \
-   --experiment fumi-5-shots --num_shots 5 --seed 123 --num_test_adapt_steps 100
+python main.py --data_dir "./data" --log_dir "./results" --wandb_entity "YOUR_WANDB" \
+   --model fumi --experiment fumi-5-shots --num_shots 5
 ```
+
+See a full script that can be run from google colab in the `notebooks` directory.
 
 ## Cite
 
