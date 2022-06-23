@@ -1,17 +1,11 @@
 from __future__ import print_function
-from ipywidgets import interact, interactive, fixed, interact_manual
 import ipywidgets as widgets
 from IPython.display import display
-import matplotlib.pyplot as plt
-from google.colab.patches import cv2_imshow
 import cv2
 import numpy as np
-from PIL import Image
-import IPython
 import time
 import random
 from .demo_data_parser import DemoDataParser
-import io
 
 
 class DatasetExplorer():

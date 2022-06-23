@@ -2,12 +2,16 @@
 
 Authors: Matthew Jackson*, Shreshth Malik*, Michael Matthews, and Yousuf Mohamed-Ahmed
 
+[Arxiv (TODO)](). 
+
+Presented as a poster at FARSCOPE Robotics Conference 2022, Bristol, UK (Best Poster award).
+
 ## Overview
 
-This repository provides a framework to train and evaluate multi-modal models for few-shot classification on our Zanim dataset. It also includes the code used for collating the class descriptions used to create our dataset. 
-
+This repository provides a framework to train and evaluate multi-modal models for few-shot classification on our iNat-Anim dataset. 
 
 ## Dataset 
+
 iNat-Anim is a dataset specifically designed to benchmark few-shot and multi-modal image classification; each animal in the dataset has a succinct description of its appearance, and, as a result, it is desirable to create models that can leverage this information to improve few (or zero)-shot image-classification.
 <img src="dataset-example.svg">
 
@@ -17,13 +21,13 @@ You can explore the dataset using the demo in the `notebooks` directory.
 
 ## Models
 
-There currently is support for [AM3](https://proceedings.neurips.cc/paper/2019/hash/d790c9e6c0b5e02c87b375e782ac01bc-Abstract.html), [MAML](https://arxiv.org/abs/1703.03400), [CLIP](https://arxiv.org/abs/2103.00020) and our novel model, Fusion by Meta-Initialisation (FuMI).
+There currently is support for [AM3](https://proceedings.neurips.cc/paper/2019/hash/d790c9e6c0b5e02c87b375e782ac01bc-Abstract.html), [MAML](https://arxiv.org/abs/1703.03400), [CLIP](https://arxiv.org/abs/2103.00020) and our novel model, Fusion by Meta-Initialisation (FuMI). See our [paper]() for details.
 
 ## Usage
 
 First download the requirements and login to [wandb](https://wandb.ai/) (for logging): `pip install -r requirements.txt; wandb login <YOUR_API_KEY>`.
 
-All experimental conditions and hyperparameters are set via command line arguments. Full predictions on test tasks are saved to the path given by the `--log_dir` argument, and all metrics (accuracy/prec/rec/F1) are saved to wandb.
+All experimental conditions and hyperparameters are set via command line arguments (e.g. you can change the text embedding model and use common species names instead of descriptions). Full predictions on test tasks are saved to the path given by the `--log_dir` argument, and all metrics (accuracy/prec/rec/F1) are saved to wandb.
 
 ### Example
 
@@ -34,10 +38,13 @@ python main.py --data_dir "./dataset" --log_dir "./fumi" --wandb_entity "YOUR_WA
    --experiment fumi-5-shots --num_shots 5 --seed 123 --num_test_adapt_steps 100
 ```
 
-
 ## Cite
 
 If you find our work useful, please consider citing. (TBC)
+```
+@misc{}
+...
+```
 
 
 ## Disclaimer
