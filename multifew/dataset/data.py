@@ -1,5 +1,4 @@
 import json
-from multiprocessing import pool
 import os
 import random
 import subprocess
@@ -44,16 +43,16 @@ def get_dataset(args):
     if dataset == "cub":
         train, val, test, dictionary = get_CUB(data_dir, num_way, num_shots,
                                                num_shots_test)
-    elif dataset == "zanim":
-        train, val, test, dictionary = get_zanim(data_dir, json_path, num_way,
+    elif dataset == "inat-anim":
+        train, val, test, dictionary = get_inat_anim(data_dir, json_path, num_way,
                                                  num_shots, num_shots_test,
                                                  text_encoder, text_type,
                                                  remove_stop_words,
                                                  args.image_embedding_model,
                                                  args.colab,
                                                  args.device)
-    elif dataset == "supervised-zanim":
-        train, val, test = get_supervised_zanim(data_dir, json_path,
+    elif dataset == "supervised-inat-anim":
+        train, val, test = get_supervised_inat_anim(data_dir, json_path,
                                                 text_encoder, text_type,
                                                 remove_stop_words,
                                                 args.image_embedding_model,
@@ -87,7 +86,7 @@ def get_dataset(args):
     return train_loader, val_loader, test_loader, dictionary
 
 
-def _convert_zanim_arguments(text_encoder: str, text_type: List[str]):
+def _convert_inat_anim_arguments(text_encoder: str, text_type: List[str]):
     token_mode = TokenisationMode.BERT if text_encoder == "BERT" else TokenisationMode.STANDARD
     modes = {
         "description": DescriptionMode.FULL_DESCRIPTION,
@@ -102,15 +101,15 @@ def _convert_zanim_arguments(text_encoder: str, text_type: List[str]):
     return (token_mode, description_mode)
 
 
-def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
+def get_supervised_inat_anim(data_dir: str, json_path: str, text_encoder: str,
                          text_type: str, remove_stop_words: bool,
                          image_embedding_model: str, device: str, colab: bool):
     splits = []
-    _, description_mode = _convert_zanim_arguments(text_encoder, text_type)
+    _, description_mode = _convert_inat_anim_arguments(text_encoder, text_type)
     for (train, val, test) in [(True, False, False), (False, True, False),
                                (False, False, True)]:
         splits.append(
-            SupervisedZanim(root=data_dir,
+            SupervisedInatAnim(root=data_dir,
                             json_path=json_path,
                             train=train,
                             val=val,
@@ -123,17 +122,17 @@ def get_supervised_zanim(data_dir: str, json_path: str, text_encoder: str,
     return tuple(splits)
 
 
-def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
+def get_inat_anim(data_dir: str, json_path: str, num_way: int, num_shots: int,
               num_shots_test: int, text_encoder: str, text_type: str,
               remove_stop_words: bool, image_embedding_model: str, colab: bool,
               device: str):
 
-    token_mode, description_mode = _convert_zanim_arguments(
+    token_mode, description_mode = _convert_inat_anim_arguments(
         text_encoder,
         text_type,
     )
     precompute_bert = (text_encoder=="BERT")
-    train = Zanim(root=data_dir,
+    train = InatAnim(root=data_dir,
                   json_path=json_path,
                   num_classes_per_task=num_way,
                   meta_train=True,
@@ -150,7 +149,7 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                                 num_train_per_class=num_shots)
     train_split.seed(0)
 
-    val = Zanim(root=data_dir,
+    val = InatAnim(root=data_dir,
                 json_path=json_path,
                 num_classes_per_task=num_way,
                 meta_val=True,
@@ -167,7 +166,7 @@ def get_zanim(data_dir: str, json_path: str, num_way: int, num_shots: int,
                               num_train_per_class=num_shots)
     val_split.seed(0)
 
-    test = Zanim(root=data_dir,
+    test = InatAnim(root=data_dir,
                  json_path=json_path,
                  num_classes_per_task=num_way,
                  meta_test=True,
@@ -229,7 +228,7 @@ class DescriptionMode(Enum):
     COMMON_NAME = 3
 
 
-class SupervisedZanim(torch.utils.data.Dataset):
+class SupervisedInatAnim(torch.utils.data.Dataset):
     def __init__(self,
                  root,
                  json_path="train.json",
@@ -246,7 +245,7 @@ class SupervisedZanim(torch.utils.data.Dataset):
         if (train + val + test > 1) or (train + val + test == 0):
             raise ValueError(
                 "Only a single value of train, val, test can be true")
-        self._zcd = ZanimClassDataset(
+        self._zcd = InatAnimClassDataset(
             root,
             json_path,
             meta_train=train,
@@ -292,7 +291,7 @@ class SupervisedZanim(torch.utils.data.Dataset):
             bert_index], category_id
 
 
-class Zanim(CombinationMetaDataset):
+class InatAnim(CombinationMetaDataset):
     def __init__(self,
                  root,
                  json_path="train.json",
@@ -321,7 +320,7 @@ class Zanim(CombinationMetaDataset):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
-        self.dataset = ZanimClassDataset(
+        self.dataset = InatAnimClassDataset(
             root,
             json_path,
             meta_train=meta_train,
@@ -345,7 +344,7 @@ class Zanim(CombinationMetaDataset):
         return self.dataset.dictionary.token2id
 
 
-class ZanimClassDataset(ClassDataset):
+class InatAnimClassDataset(ClassDataset):
     def __init__(self,
                  root: str,
                  json_path: str,
@@ -541,7 +540,7 @@ class ZanimClassDataset(ClassDataset):
             desc = self.descriptions
             mask = self.mask[
                 index] if self.tokenisation_mode == TokenisationMode.BERT else None
-        return ZanimDataset(index,
+        return InatAnimDataset(index,
                             indices,
                             self.image_embeddings[indices],
                             desc[index],
@@ -550,7 +549,7 @@ class ZanimClassDataset(ClassDataset):
                             target_transform=self.get_target_transform(index))
 
 
-class ZanimDataset(Dataset):
+class InatAnimDataset(Dataset):
     def __init__(self,
                  index,
                  image_ids,
@@ -610,23 +609,8 @@ if __name__ == "__main__":
     remove_stop_words = True if args.remove_stop_words else False
 
     data_dir = args.data_dir
-    # train, val, test = get_supervised_zanim(data_dir,
-    #                                         args.json_path,
-    #                                         text_encoder,
-    #                                         text_type,
-    #                                         remove_stop_words,
-    #                                         image_embedding_model='resnet-152',
-    #                                         device=args.device,
-    #                                         colab=True)
-    # for batch_idx, batch in enumerate(DataLoader(train, batch_size=10)):
-    #     image, text, cat = batch
-    #     print(image.shape)
-    #     print(text.shape)
-    #     print(cat)
-    #     if batch_idx > 10:
-    #         break
 
-    train, val, test, dictionary = get_zanim(
+    train, val, test, dictionary = get_inat_anim(
         data_dir,
         args.json_path,
         num_way,
