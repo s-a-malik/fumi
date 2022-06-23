@@ -28,24 +28,19 @@ def parser():
     parser.add_argument("--dataset",
                         type=str,
                         default="inat-anim",
-                        help="Dataset to use")
+                        help="Dataset to use (inat-anim, supervised-inat-anim")
     parser.add_argument("--data_dir",
                         type=str,
                         default="./data",
                         help="Directory to use for data")
-    parser.add_argument(
-        "--json_path",
-        type=str,
-        default="train.json",
-        help="Location of the json file containing dataset annotations")
     parser.add_argument("--checkpoint",
                         type=str,
                         default=None,
                         help="Path to pretrained model")
     parser.add_argument("--log_dir",
                         type=str,
-                        default="./am3",
-                        help="Directory to use for logs and checkpoints")
+                        default="./results",
+                        help="Directory to use for results")
     parser.add_argument('--remove_stop_words',
                         action='store_true',
                         help="Whether to remove stop words")

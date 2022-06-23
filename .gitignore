@@ -136,6 +136,7 @@ dmypy.json
 # folders
 data/
 results/
+checkpoints/
 
 # wandb
 .wandb

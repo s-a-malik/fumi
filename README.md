@@ -33,11 +33,13 @@ All experimental conditions and hyperparameters are set via command line argumen
 
 For example, to train FuMI:
 ```bash
-python main.py --data_dir "./data" --log_dir "./results" --wandb_entity "YOUR_WANDB" \
+python main.py --data_dir "./data" --wandb_entity "YOUR_WANDB" \
    --model fumi --experiment fumi-5-shots --num_shots 5
 ```
 
-See a full script that can be run from google colab in the `notebooks` directory.
+Note, to train clip, you must also set the `--dataset supervised-inat-anim` flag as well.
+
+A full script that can be run from google colab is in the `notebooks` directory.
 
 ## Cite
 

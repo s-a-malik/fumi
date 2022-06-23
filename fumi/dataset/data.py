@@ -416,12 +416,12 @@ class InatAnimClassDataset(ClassDataset):
         self.descriptions = self._get_descriptions(self.annotations,
                                                    self.categories,
                                                    description_mode)
-        print("Copying image embeddings to local disk")
 
-        image_embedding_file = f"image-embedding-{image_embedding_model}.hdf5"
+        image_embedding_file = f"image_embeddings_{image_embedding_model}.hdf5"
         if colab:
             local_image_embedding_path = os.path.join('/content',
                                                     image_embedding_file)
+            print("Copying image embeddings to local (colab) disk")
             if not os.path.exists(local_image_embedding_path):
                 self._copy_image_embeddings(image_embedding_file)
         else:
