@@ -15,3 +15,4 @@ gensim==4.0.1
 nltk==3.6.1
 transformers==4.5.1
 opencv-python==4.6.0.66
+gdown==4.4.0
