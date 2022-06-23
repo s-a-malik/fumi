@@ -56,7 +56,7 @@ def evaluate(args, model, data):
         batch_ids = batch[2]
 
         batch_size = batch_text.shape[0]
-
+        print(batch_image)
         shot_i = 0
         while shot_i + n_ways < batch_size:
             shot_text = batch_text[shot_i].unsqueeze(0)
@@ -71,7 +71,8 @@ def evaluate(args, model, data):
             total += 1
 
             shot_i += n_ways
-
+        print(correct, total)
+        
     return correct / total
 
 
