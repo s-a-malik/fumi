@@ -31,8 +31,8 @@ def get_dataset(args):
 	- dictionary: token2id dict for word tokenisation if not BERT (else None)
 	"""
     dataset = args.dataset
-    data_dir = args.data_dir
-    json_path = args.json_path
+    data_dir = args.data_dir + "/iNat-Anim"
+    json_path = data_dir + "/inat_anim.json"
     num_way = args.num_ways
     num_shots = args.num_shots
     num_shots_test = args.num_shots_test
