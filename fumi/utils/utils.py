@@ -224,7 +224,7 @@ def parser():
     parser.add_argument("--disable_cuda",
                         action="store_true",
                         help="don't use GPU")
-    parser.add_argument("--wandb-offline", 
+    parser.add_argument("--wandb_offline", 
                         action="store_true",
                         help="don't save to wandb")
     return parser

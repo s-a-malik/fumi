@@ -1,13 +1,10 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torch.utils.data as data
 
 import os
 
 import wandb
-from utils.average_meter import AverageMeter
 from utils import utils as utils
 
 
@@ -27,7 +24,6 @@ class CLIP(nn.Module):
         self.image_fc2 = nn.Linear(latent_dim, latent_dim)
 
     def forward(self, text, image):
-        #print(text.shape, image.shape, self.text_input_dim, self.image_input_dim)
         # [batch_size, latent_dim]
         text_latent = self.text_fc2(self.text_af(self.text_fc(text)))
         image_latent = self.image_fc2(self.image_af(self.image_fc(image)))
@@ -39,9 +35,7 @@ class CLIP(nn.Module):
         image_norms_repeated = image_norms.repeat(len(text), 1).T
 
         cosine_sim_unnormalised = text_latent @ image_latent.T
-        #print(cosine_sim_unnormalised.shape, text_norms_repeated.shape, image_norms_repeated.shape)
         cosine_sim_normalised = cosine_sim_unnormalised / text_norms_repeated / image_norms_repeated.T
-        #print(text_norms_repeated.shape, image_norms_repeated.shape, cosine_sim_normalised.shape)
 
         return cosine_sim_normalised
 
@@ -98,7 +92,6 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
             batch_image = batch[0].to(device)
             batch_ids = batch[2]
 
-            # TODO - Append discarded pairs to next batch (?)
             # Discard repeated classes
             _, unique_idxs = torch.LongTensor(
                 np.unique(batch_ids, return_index=True)).to(device)
@@ -110,12 +103,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
             optimizer.zero_grad()
 
             output = model(batch_text, batch_image)
-
-            #target = np.zeros((batch_size, batch_size))
-            #for i in range(batch_size):
-            #  target[i] = (batch_ids[i] == batch_ids)
-            #target = torch.Tensor(target.astype(int) * 2 - 1).to(device)
-
+            
             # Loss - Symmetric cross entropy
             labels = torch.arange(batch_size).to(device)
             loss_1 = nn.CrossEntropyLoss()(output, labels)

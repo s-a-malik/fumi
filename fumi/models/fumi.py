@@ -14,6 +14,7 @@ from utils import utils as utils
 from .common import WordEmbedding, RnnHid, RNN
 from utils.hypernet_init import hyper_weight_layer_init
 
+
 class FUMI(nn.Module):
     def __init__(self,
                  n_way=5,
