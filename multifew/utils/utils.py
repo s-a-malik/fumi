@@ -27,7 +27,7 @@ def parser():
                         help="W&B entity")
     parser.add_argument("--dataset",
                         type=str,
-                        default="zanim",
+                        default="inat-anim",
                         help="Dataset to use")
     parser.add_argument("--data_dir",
                         type=str,
@@ -187,11 +187,10 @@ def parser():
     parser.add_argument("--hypernet_bias_init",
                         action="store_true",
                         help="Whether to initialise hypernet bias for policy")
-    # lambda fixed for am3
     parser.add_argument("--lamda_fixed",
                         default=None,
                         type=int,
-                        help="Lambda fixed for am3")
+                        help="Lambda fixed for am3. Lambda = 0 is text only, Lambda = 1 is image only")
 
     # clip config
     parser.add_argument("--clip_latent_dim",
@@ -225,6 +224,9 @@ def parser():
     parser.add_argument("--disable_cuda",
                         action="store_true",
                         help="don't use GPU")
+    parser.add_argument("--wandb-offline", 
+                        action="store_true",
+                        help="don't save to wandb")
     return parser
 
 

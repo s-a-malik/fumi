@@ -1,6 +1,5 @@
 import os
 import sys
-import argparse
 import wandb
 import random
 
@@ -22,9 +21,9 @@ def main(args):
     # set up directories and logs
     results_path = f"{args.log_dir}/results"
     os.makedirs(results_path, exist_ok=True)
-    # TODO changing the dir doesn't seem to work on colab
-    os.environ["GENSIM_DATA_DIR"] = f"{args.log_dir}/word_embeddings"
+
     job_type = "eval" if args.evaluate else "train"
+    os.environ['WANDB_MODE'] = 'offline' if args.wandb_offline else 'online' 
     run = wandb.init(entity=args.wandb_entity,
                      project=args.model,
                      group=args.experiment,
@@ -46,15 +45,12 @@ def main(args):
 
     # load datasets
     train_loader, val_loader, test_loader, dictionary = get_dataset(args)
-    # TODO fix this to give exactly 1000 episodes. Change in test dataloader probs.
     max_test_batches = int(args.num_ep_test / args.batch_size)
 
     # random seeds
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     random.seed(args.seed)
-    # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
-
 
     # initialise model and optim
     model = utils.init_model(args, dictionary)

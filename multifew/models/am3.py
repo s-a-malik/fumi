@@ -6,7 +6,6 @@ import wandb
 import torch
 import torch.nn as nn
 
-from transformers import BertModel
 from tqdm.autonotebook import tqdm
 
 from utils.average_meter import AverageMeter
@@ -49,9 +48,6 @@ class AM3(nn.Module):
             raise NameError(f"{im_encoder} not allowed as image encoder")
 
         if self.text_encoder_type == "BERT":
-            # TODO be able to use any hf bert model (requires correct tokenisation)
-            # self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
-            # self.text_emb_dim = self.text_encoder.config.hidden_size
             self.text_encoder = nn.Identity()
 
         elif self.text_encoder_type == "precomputed":
@@ -105,12 +101,6 @@ class AM3(nn.Module):
         - im_embeddings (torch.FloatTensor): image in prototype space (b, NxK, emb_dim)
         - (if not im_only) text_embeddings (torch.FloatTensor): text in prototype space (b, NxK, emb_dim)
         """
-        # unpack input
-        # if self.text_encoder_type == "BERT":
-        #     idx, text, attn_mask, im = inputs
-        # else:
-        #     idx, text, im = inputs
-        
         # precomputed bert is the same
         idx, text, im = inputs
 
@@ -120,19 +110,6 @@ class AM3(nn.Module):
             return im_embeddings
         else:
             B, NK, seq_len = text.shape
-            # if self.text_encoder_type == "BERT":
-            #     # need to reshape batch for BERT input
-            #     bert_output = self.text_encoder(text.view(-1, seq_len),
-            #                                     attention_mask=attn_mask.view(
-            #                                         -1, seq_len))
-            #     # get [CLS] token
-            #     text_encoding = bert_output[1].view(B, NK,
-            #                                         -1)  # (b x N*K x 768)
-            # elif self.text_encoder_type == "rand":
-            #     # get a random tensor as the embedding
-            #     # text_encoding = 2*torch.rand(B, NK, self.text_emb_dim) - 1
-            #     pass
-            # else:
             
             # bert precomputed
             text_encoding = self.text_encoder(
@@ -267,7 +244,6 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                 task="train")
 
             # log
-            # TODO track lr etc as well if using scheduler
             wandb.log(
                 {
                     "train/acc": train_acc,
@@ -345,7 +321,6 @@ def test_loop(args, model, test_dataloader, max_num_batches):
     - support_idx
     - support_lamdas
     """
-    # TODO need to fix number of tasks/episodes etc. depending on batch, num_ways etc.
 
     avg_test_acc = AverageMeter()
     avg_test_f1 = AverageMeter()

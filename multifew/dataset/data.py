@@ -7,7 +7,6 @@ from enum import Enum
 from typing import List, Set
 
 import numpy as np
-from tqdm import tqdm
 import torch
 
 import h5py
