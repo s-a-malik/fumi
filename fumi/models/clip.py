@@ -58,7 +58,6 @@ def evaluate(args, model, data):
         batch_size = batch_text.shape[0]
 
         shot_i = 0
-        # TODO - Append leftovers to next batch
         while shot_i + n_ways < batch_size:
             shot_text = batch_text[shot_i].unsqueeze(0)
             shot_image = batch_image[shot_i:shot_i + n_ways]

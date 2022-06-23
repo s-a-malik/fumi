@@ -25,8 +25,8 @@ def main(args):
     job_type = "eval" if args.evaluate else "train"
     os.environ['WANDB_MODE'] = 'offline' if args.wandb_offline else 'online' 
     run = wandb.init(entity=args.wandb_entity,
-                     project=args.model,
-                     group=args.experiment,
+                     project=args.wandb_project,
+                     group=args.wandb_experiment,
                      job_type=job_type,
                      save_code=True)
     wandb.config.update(args)

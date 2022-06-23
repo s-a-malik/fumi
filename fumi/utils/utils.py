@@ -25,6 +25,10 @@ def parser():
                         type=str,
                         default="multimodal-image-cls",
                         help="W&B entity")
+    parser.add_argument("--wandb_project",
+                        type=str,
+                        default="fumi",
+                        help="W&B project")
     parser.add_argument("--dataset",
                         type=str,
                         default="inat-anim",
@@ -204,7 +208,7 @@ def parser():
         type=int,
         default=2500,
         help="Number of batches between validation/checkpointing")
-    parser.add_argument("--experiment",
+    parser.add_argument("--wandb_experiment",
                         type=str,
                         default="debug",
                         help="Name for experiment (for wandb group)")
