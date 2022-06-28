@@ -34,7 +34,7 @@ All experimental conditions and hyperparameters are set via command line argumen
 For example, to train FuMI:
 ```bash
 python main.py --data_dir "./data" --wandb_entity "YOUR_WANDB" \
-   --model fumi --experiment fumi-5-shots --num_shots 5
+   --model fumi --wandb_experiment "YOUR_EXPERIMENT_NAME" --num_shots 5
 ```
 
 Note, to train clip, you must also set the `--dataset supervised-inat-anim` flag as well.
