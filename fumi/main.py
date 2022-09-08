@@ -69,7 +69,7 @@ def main(args):
         # get best
         checkpoint_file = wandb.restore(
             "best.pth.tar",
-            run_path=f"multimodal-image-cls/{args.model}/{args.checkpoint}",
+            run_path=f"{args.wandb_entity}/{args.model}/{args.checkpoint}",
             root=model_path)
         # load state dict
         model, optimizer = utils.load_checkpoint(model, optimizer, args.device,

@@ -1,27 +1,19 @@
-# Improving Few-Shot Learning using Task-Informed Meta-Initialisation
-
-Authors: Matthew Jackson*, Shreshth Malik*, Michael Matthews, and Yousuf Mohamed-Ahmed
-
-[Arxiv (TODO)](). 
-
-Presented as a poster at FARSCOPE Robotics Conference 2022, Bristol, UK (Best Poster award).
+# Multi-Modal Fusion by Meta-Initialization
 
 ## Overview
 
-This repository provides a framework to train and evaluate multi-modal models for few-shot classification on our iNat-Anim dataset. 
+This repository provides a framework to train and evaluate multi-modal models, including the proposed Fusion by Meta-Initialisation (FuMI) model, for few-shot classification on the iNat-Anim dataset.
 
-## Dataset 
+## Dataset
 
 iNat-Anim is a dataset specifically designed to benchmark few-shot and multi-modal image classification; each animal in the dataset has a succinct description of its appearance, and, as a result, it is desirable to create models that can leverage this information to improve few (or zero)-shot image-classification.
 <img src="dataset-example.svg">
 
-The dataset is hosted on Zenodo [here (TODO)]().
-
-You can explore the dataset using the demo in the `notebooks` directory, which can be opened in Google Colab. 
+You can explore the dataset using the demo in the `notebooks` directory.
 
 ## Models
 
-There currently is support for [AM3](https://proceedings.neurips.cc/paper/2019/hash/d790c9e6c0b5e02c87b375e782ac01bc-Abstract.html), [MAML](https://arxiv.org/abs/1703.03400), [CLIP](https://arxiv.org/abs/2103.00020) and our novel model, Fusion by Meta-Initialisation (FuMI). See our [paper (TODO)]() for details.
+There currently is support for [AM3](https://proceedings.neurips.cc/paper/2019/hash/d790c9e6c0b5e02c87b375e782ac01bc-Abstract.html), [MAML](https://arxiv.org/abs/1703.03400), [CLIP](https://arxiv.org/abs/2103.00020) and FuMI.
 
 ## Usage
 
@@ -43,18 +35,4 @@ python main.py --data_dir "./data" \
 
 Note, to train clip, you must also set the `--dataset supervised-inat-anim` flag as well.
 
-A full script that can be run from google colab is in the `notebooks` directory.
-
-## Cite
-
-If you find our work useful, please consider citing. (TBC)
-```
-@misc{}
-...
-```
-
-
-## Disclaimer
-
-This is research code shared without support or guarantee of quality. Please let us know, however, if there is anything wrong or that could be improved and we will try to solve it.
-
+A full script that can be run is in the `notebooks` directory.
