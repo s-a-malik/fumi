@@ -101,6 +101,66 @@ class RNN(nn.Module):
         return seq_embed.view(B, NK, -1)        # (B, N*K, rnn_hid_dim*2)
 
 
+class RnnHid(nn.Module):
+    """RNN model in Pytorch for classification
+    Using hidden state as features (not outputs)
+    """
+
+    def __init__(self, embedding_type, pooling_strat, dictionary, rnn_hid_dim):
+        """Embeds tokenised sequence into a fixed length encoding with an RNN.
+        """
+        super(RnnHid, self).__init__()
+        self.pooling_strat = pooling_strat
+        self.dictionary = dictionary
+        self.embedding_type = embedding_type
+        self.rnn_hid_dim = rnn_hid_dim // 2      # assuming bidirectional
+        self.padding_token = self.dictionary["PAD"]
+
+        # word embedding
+        if embedding_type == "rand":
+            self.embed = nn.Embedding(len(self.dictionary), rnn_hid_dim)
+            self.text_emb_size = rnn_hid_dim
+        else:
+            embedding_weights = get_embedding_weights(dictionary, embedding_type)
+            self.text_emb_size = embedding_weights.shape[-1]
+            self.embed = nn.Embedding.from_pretrained(torch.FloatTensor(embedding_weights))
+
+        # RNN 
+        self.rnn = nn.LSTM(
+            input_size=self.text_emb_size,
+            hidden_size=self.rnn_hid_dim,
+            num_layers=1,
+            bidirectional=True,
+            batch_first=True)
+
+    def forward(self, x):
+        """Params:
+        - x (torch.LongTensor): tokenised sequence (b x N*K x max_seq_len)
+        Returns:
+        - text_embedding (torch.FloatTensor): embedded sequence (b x N*K x emb_dim)
+        """
+        # process data
+        B, NK, max_seq_len = x.shape
+        # flatten batch
+        x_flat = x.view(-1, max_seq_len)    # (B*N*K x max_seq_len)
+        # padding_masks
+        padding_mask = torch.where(x_flat != self.padding_token, 1, 0)
+        seq_lens = torch.sum(padding_mask, dim=-1).cpu()      # (B*N*K)
+
+        # embed
+        text_embedding = self.embed(x_flat)      # (B*N*K x max_seq_len x emb_dim)
+        
+        # feed through RNN
+        text_embedding_packed = pack_padded_sequence(text_embedding, seq_lens, batch_first=True, enforce_sorted=False)
+        self.rnn.flatten_parameters()
+        _, (_, ct) = self.rnn(text_embedding_packed)
+
+        # concat forward and backward results (takes hidden states)
+        seq_embed = torch.cat((ct[0], ct[1]), dim=-1)
+        # unsqueeze
+        return seq_embed.view(B, NK, -1)        # (B, N*K, rnn_hid_dim*2)
+
+
 def get_embedding_weights(dictionary, text_encoder_type):
     """Loads gensim word embedding weights into a matrix
     Params:

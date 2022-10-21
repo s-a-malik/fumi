@@ -2,43 +2,50 @@ import wandb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from tqdm import tqdm
-from collections import OrderedDict
-from transformers import BertModel
-from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
+from torchmeta.modules import (MetaSequential, MetaLinear)
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
-from ..utils.average_meter import AverageMeter
-from ..utils import utils as utils
-from .common import WordEmbedding
+import os
+from tqdm import tqdm
+from collections import OrderedDict
+
+from utils.average_meter import AverageMeter
+from utils import utils as utils
+from .common import WordEmbedding, RnnHid, RNN
+from utils.hypernet_init import hyper_weight_layer_init
 
 
 class FUMI(nn.Module):
     def __init__(self,
                  n_way=5,
                  im_emb_dim=2048,
-                 im_hid_dim=32,
+                 im_hid_dim=[64],
                  text_encoder="BERT",
                  text_emb_dim=300,
                  text_hid_dim=1024,
+                 dropout_rate=0.0,
                  dictionary=None,
                  pooling_strat="mean",
-                 shared_feats=True):
+                 init_all_layers=False,
+                 norm_hypernet=True,
+                 fine_tune=False,
+                 init_bias=False):
         super(FUMI, self).__init__()
         self.n_way = n_way
         self.im_emb_dim = im_emb_dim
         self.im_hid_dim = im_hid_dim
         self.text_encoder_type = text_encoder
-        self.text_emb_dim = text_emb_dim  # only applicable if precomputed
+        self.text_emb_dim = text_emb_dim  # only applicable if precomputed or RNN hid dim
         self.text_hid_dim = text_hid_dim
+        self.dropout_rate = dropout_rate
         self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
+        self.norm_hypernet = norm_hypernet
+        self.fine_tune = fine_tune
+        self.init_bias = init_bias
 
-        if self.text_encoder_type == "BERT":
-            self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
-            self.text_emb_dim = self.text_encoder.config.hidden_size
-        elif self.text_encoder_type == "precomputed":
+        if self.text_encoder_type == "BERT" or self.text_encoder_type == "precomputed":
+            # BERT embeddings precomputed in dataloader
             self.text_encoder = nn.Identity()
         elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
             # load pretrained word embeddings as weights
@@ -48,55 +55,62 @@ class FUMI(nn.Module):
             self.text_emb_dim = self.text_encoder.embedding_dim
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
+        elif self.text_encoder_type == "RNN":
+            self.text_encoder = RNN("glove", self.pooling_strat, self.dictionary, self.text_emb_dim)
+        elif self.text_encoder_type == "RNNhid":
+            self.text_encoder = RnnHid("glove", self.pooling_strat, self.dictionary, self.text_emb_dim)
         else:
             raise NameError(f"{text_encoder} not allowed as text encoder")
 
-        for param in self.text_encoder.parameters():
-            param.requires_grad = False
+        if not self.fine_tune:
+            for param in self.text_encoder.parameters():
+                param.requires_grad = False
 
-        self.shared_feats = shared_feats
-        if self.shared_feats:
-            # Text embedding to image parameters
-            self.net = nn.Sequential(
-                nn.Linear(self.text_emb_dim, self.text_hid_dim),
-                nn.ReLU(),
-                nn.Linear(
-                    self.text_hid_dim,
-                    self.im_hid_dim  # Weights
-                    + 1)  # Biases
-            )
-            # Bit of a hack to copy torch default weight initialisation
-            self.first = nn.Linear(
-                1,
-                self.im_hid_dim * self.im_emb_dim  # Weights
-                + self.im_hid_dim,  # Biases
-                bias=False)
+        # Text embedding to image parameters
+        hyper_net_layers = [
+            nn.Linear(self.text_emb_dim, self.text_hid_dim),
+            nn.ReLU()
+        ]
+        self.init_all_layers = init_all_layers
+        if not self.init_all_layers:
+            hyper_net_head = nn.Linear(
+                self.text_hid_dim,
+                self.im_hid_dim[-1]  # Weights
+                + 1)  # Biases
+
+            if self.init_bias:
+                init_fn = hyper_weight_layer_init('relu', 'normc', self.text_hid_dim, self.im_hid_dim[-1]+1, 1,
+                                                  False, adjust_weights=False, adjust_bias=True, use_film=False)
+                hyper_net_layers.append(init_fn(hyper_net_head))
+            else:
+                hyper_net_layers.append(hyper_net_head)
+
+            # Preceding layers
+            im_net_layers = OrderedDict()
+            if len(self.im_hid_dim) > 0:
+                im_net_layers['linear0'] = MetaLinear(self.im_emb_dim, self.im_hid_dim[0])
+                im_net_layers['relu0'] = nn.ReLU()
+                if self.dropout_rate > 0:
+                    im_net_layers['dropout0'] = nn.Dropout(self.dropout_rate)
+                for i in range(len(self.im_hid_dim)-1):
+                    im_net_layers['linear'+str(i+1)] = MetaLinear(self.im_hid_dim[i], self.im_hid_dim[i+1])
+                    im_net_layers['relu'+str(i+1)] = nn.ReLU()
+                    if self.dropout_rate > 0:
+                        im_net_layers['dropout'+str(i+1)] = nn.Dropout(self.dropout_rate)
+            self.im_net = MetaSequential(im_net_layers)
         else:
-            # Text embedding to image parameters
-            self.net = nn.Sequential(
-                nn.Linear(self.text_emb_dim, self.text_hid_dim),
-                nn.ReLU(),
-                nn.Linear(
-                    self.text_hid_dim,
-                    self.im_hid_dim * (self.im_emb_dim + 1)  # Weights
-                    + self.im_hid_dim + 1)  # Biases
-            )
+            raise NotImplementedError("Entire model hypernet initialisation removed")
 
-    def forward(self, text_embed, device):
-        im_params = self.net(text_embed)
-        if self.shared_feats:
-            shared_params = self.first(torch.ones(1).to(device))
-            bias_len = self.im_hid_dim + 1
-            out = torch.empty(
-                len(text_embed),
-                self.im_hid_dim * (self.im_emb_dim + 1) + self.im_hid_dim +
-                1).to(device)
-            out[:, :bias_len - 1] = shared_params[:bias_len - 1]
-            out[:, bias_len - 1] = im_params[:, 0]
-            out[:, bias_len:-self.im_hid_dim] = shared_params[bias_len - 1:]
-            out[:, -self.im_hid_dim:] = im_params[:, 1:]
-            return out
-        return im_params
+        if self.norm_hypernet:
+            hyper_net_layers.append(nn.Tanh())
+
+        self.hyper_net = nn.Sequential(*hyper_net_layers)
+
+    def forward(self, text_embed):
+        """
+        Hyper-network forward pass (text -> image params)
+        """
+        return self.hyper_net(text_embed)
 
     def evaluate(self, args, batch, optimizer, task="train"):
         """
@@ -126,12 +140,8 @@ class FUMI(nn.Module):
         test_preds = torch.zeros(test_targets.shape).to(device=args.device)
 
         # Unpack input
-        if self.text_encoder_type == "BERT":
-            _, train_texts, train_attn_masks, train_imss = train_inputs
-            _, test_texts, test_attn_masks, test_imss = test_inputs
-        else:
-            _, train_texts, train_imss = train_inputs
-            _, test_texts, test_imss = test_inputs
+        _, train_texts, train_imss = train_inputs
+        _, test_texts, test_imss = test_inputs
 
         outer_loss = torch.tensor(0., device=args.device)
         accuracy = torch.tensor(0., device=args.device)
@@ -143,23 +153,30 @@ class FUMI(nn.Module):
             else:
                 n_steps = args.num_test_adapt_steps
 
-            if self.text_encoder_type == "BERT":
-                im_params = self.get_im_params(train_texts[task_idx],
-                                               train_target, args.device,
-                                               train_attn_masks[task_idx])
-            else:
-                im_params = self.get_im_params(train_texts[task_idx],
-                                               train_target, args.device)
+            hyper_params = self.get_hyper_params(train_texts[task_idx],
+                                                 train_target, args.device)
 
+            im_params = OrderedDict(self.im_net.meta_named_parameters())
             for _ in range(n_steps):
-                train_logit = self.im_forward(train_imss[task_idx], im_params)
+                train_logit = self.im_forward(train_imss[task_idx], im_params, hyper_params)
                 inner_loss = F.cross_entropy(train_logit, train_target)
-                grads = torch.autograd.grad(inner_loss,
-                                            im_params,
-                                            create_graph=not args.first_order)
-                im_params -= args.step_size * grads[0]
 
-            test_logit = self.im_forward(test_imss[task_idx], im_params)
+                # Update hypernetwork output
+                grads = torch.autograd.grad(inner_loss,
+                                            hyper_params,
+                                            create_graph=True)
+                hyper_params -= args.step_size * grads[0]
+
+                # Update model parameters
+                self.im_net.zero_grad()
+                im_params = gradient_update_parameters(self.im_net,
+                                                       inner_loss,
+                                                       params=im_params,
+                                                       step_size=args.step_size,
+                                                       first_order=False)
+
+            test_logit = self.im_forward(test_imss[task_idx], im_params, hyper_params)
+
             _, test_preds[task_idx] = test_logit.max(dim=-1)
 
             outer_loss += F.cross_entropy(test_logit, test_target)
@@ -178,16 +195,9 @@ class FUMI(nn.Module):
         return outer_loss.detach().cpu().numpy(), accuracy.detach().cpu(
         ).numpy(), test_preds, test_targets
 
-    def get_im_params(self, text, targets, device, attn_mask=None):
+    def get_hyper_params(self, text, targets, device, attn_mask=None):
         NK, seq_len = text.shape
-        if self.text_encoder_type == "BERT":
-            # Need to reshape batch for BERT input
-            bert_output = self.text_encoder(text.view(-1, seq_len),
-                                            attention_mask=attn_mask.view(
-                                                -1, seq_len))
-            # Get [CLS] token
-            text_encoding = bert_output[1].view(NK, -1)  # (N*K x 768)
-        elif self.text_encoder_type == "rand":
+        if self.text_encoder_type == "rand":
             # Get a random tensor as the encoding
             text_encoding = 2 * torch.rand(NK, self.text_emb_dim) - 1
         else:
@@ -199,22 +209,13 @@ class FUMI(nn.Module):
             class_text_enc[i] = text_encoding[(targets == i).nonzero(
                 as_tuple=True)[0][0]]
 
-        return self(class_text_enc, device)
+        return self(class_text_enc)
 
-    def im_forward(self, im_embeds, im_params):
-        bias_len = self.im_hid_dim + 1
-        b_im = torch.unsqueeze(im_params[:, :bias_len], 2)
-        w_im = im_params[:, bias_len:].view(-1, self.im_emb_dim + 1,
-                                            self.im_hid_dim)
-
-        a = torch.matmul(im_embeds, w_im[:, :-1])
-        h = F.relu(torch.transpose(a, 1, 2) + b_im[:, :-1])
-
-        a_out = torch.matmul(torch.transpose(h, 1, 2),
-                             torch.unsqueeze(w_im[:, -1], 2))
-        out = torch.squeeze(a_out) + b_im[:, -1]
+    def im_forward(self, im_embeds, im_params, hyper_params):
+        out = self.im_net(im_embeds, params=im_params)
+        out = torch.matmul(out, torch.unsqueeze(hyper_params[:, :-1], 2))
+        out = torch.squeeze(out) + torch.unsqueeze(hyper_params[:, -1], 1)
         return torch.transpose(out, 0, 1)
-
 
 def training_run(args, model, optimizer, train_loader, val_loader,
                  max_test_batches):
@@ -222,18 +223,28 @@ def training_run(args, model, optimizer, train_loader, val_loader,
     FUMI training loop
     """
 
-    best_loss, best_acc = test_loop(args, model, val_loader, max_test_batches)
+    best_loss, best_acc, _, _ = test_loop(args, model, val_loader, max_test_batches)
     print(f"\ninitial loss: {best_loss}, acc: {best_acc}")
     best_batch_idx = 0
 
+    # check if scheduled
+    if type(optimizer) == tuple:
+        opt, scheduler = optimizer
+    else:
+        opt = optimizer
+        scheduler = None
+
     try:
         # Training loop
+        t = tqdm(total=args.eval_freq, leave=True, position=0, desc='Train')
+        t.refresh()
         for batch_idx, batch in enumerate(train_loader):
-            train_loss, train_acc = model.evaluate(args=args,
+            train_loss, train_acc, _, _ = model.evaluate(args=args,
                                                    batch=batch,
-                                                   optimizer=optimizer,
+                                                   optimizer=opt,
                                                    task="train")
 
+            t.update()
             wandb.log(
                 {
                     "train/acc": train_acc,
@@ -244,7 +255,8 @@ def training_run(args, model, optimizer, train_loader, val_loader,
 
             # Eval on validation set periodically
             if batch_idx % args.eval_freq == 0 and batch_idx != 0:
-                val_loss, val_acc = test_loop(args, model, val_loader,
+                t.close()
+                val_loss, val_acc, _, _ = test_loop(args, model, val_loader,
                                               max_test_batches)
                 is_best = val_loss < best_loss
                 if is_best:
@@ -260,7 +272,7 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                     "batch_idx": batch_idx,
                     "state_dict": model.state_dict(),
                     "best_loss": best_loss,
-                    "optimizer": optimizer.state_dict(),
+                    "optimizer": opt.state_dict(),
                     "args": vars(args)
                 }
                 utils.save_checkpoint(checkpoint_dict, is_best)
@@ -269,6 +281,9 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                     f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
                     f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
+                t = tqdm(total=args.eval_freq, leave=True, position=0, desc='Train batch')
+                t.refresh()
+
             # break after max iters or early stopping
             if (batch_idx > args.epochs - 1) or (
                     args.patience > 0
@@ -276,6 +291,10 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                 break
     except KeyboardInterrupt:
         pass
+
+    # load best model    
+    best_file = os.path.join(wandb.run.dir, "best.pth.tar")
+    model, _ = utils.load_checkpoint(model, opt, args.device, best_file)
 
     return model
 
@@ -293,7 +312,7 @@ def test_loop(args, model, test_loader, max_num_batches):
     test_preds = []
     test_targets = []
     for batch_idx, batch in enumerate(
-            tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
+            tqdm(test_loader, total=max_num_batches, position=0, leave=True, desc='Test')):
         test_loss, test_acc, preds, target = model.evaluate(args=args,
                                                             batch=batch,
                                                             optimizer=None,

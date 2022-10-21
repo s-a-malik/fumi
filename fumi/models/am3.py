@@ -1,16 +1,16 @@
 """Model classes and training loops for AM3 in Pytorch.
 """
 
+import os
 import wandb
 import torch
 import torch.nn as nn
 
-from transformers import BertModel
 from tqdm.autonotebook import tqdm
 
-from ..utils.average_meter import AverageMeter
-from ..utils import utils as utils
-from .common import WordEmbedding, RNN
+from utils.average_meter import AverageMeter
+from utils import utils as utils
+from .common import WordEmbedding, RNN, RnnHid
 
 
 class AM3(nn.Module):
@@ -24,7 +24,8 @@ class AM3(nn.Module):
                  dropout=0.7,
                  fine_tune=False,
                  dictionary=None,
-                 pooling_strat="mean"):
+                 pooling_strat="mean",
+                 lamda_fixed=None):
         super(AM3, self).__init__()
         self.im_emb_dim = im_emb_dim  # image embedding size
         self.text_encoder_type = text_encoder
@@ -35,6 +36,7 @@ class AM3(nn.Module):
         self.fine_tune = fine_tune
         self.dictionary = dictionary  # for word embeddings
         self.pooling_strat = pooling_strat
+        self.lamda_fixed = lamda_fixed
 
         if im_encoder == "precomputed":
             # if using precomputed embeddings
@@ -46,9 +48,8 @@ class AM3(nn.Module):
             raise NameError(f"{im_encoder} not allowed as image encoder")
 
         if self.text_encoder_type == "BERT":
-            # TODO be able to use any hf bert model (requires correct tokenisation)
-            self.text_encoder = BertModel.from_pretrained('bert-base-uncased')
-            self.text_emb_dim = self.text_encoder.config.hidden_size
+            self.text_encoder = nn.Identity()
+
         elif self.text_encoder_type == "precomputed":
             self.text_encoder = nn.Identity()
         elif self.text_encoder_type == "w2v" or self.text_encoder_type == "glove":
@@ -61,6 +62,9 @@ class AM3(nn.Module):
             # TODO optional embedding type
             self.text_encoder = RNN("glove", self.pooling_strat,
                                     self.dictionary, self.text_emb_dim)
+        elif self.text_encoder_type == "RNNhid":
+            self.text_encoder = RnnHid("glove", self.pooling_strat,
+                                    self.dictionary, self.text_emb_dim)
         elif self.text_encoder_type == "rand":
             self.text_encoder = nn.Linear(self.text_emb_dim, self.text_emb_dim)
         else:
@@ -68,6 +72,7 @@ class AM3(nn.Module):
 
         # fine tune set up
         if not self.fine_tune:
+            print("Not fine tuning embeddings")
             for param in self.text_encoder.parameters():
                 param.requires_grad = False
 
@@ -96,11 +101,8 @@ class AM3(nn.Module):
         - im_embeddings (torch.FloatTensor): image in prototype space (b, NxK, emb_dim)
         - (if not im_only) text_embeddings (torch.FloatTensor): text in prototype space (b, NxK, emb_dim)
         """
-        # unpack input
-        if self.text_encoder_type == "BERT":
-            idx, text, attn_mask, im = inputs
-        else:
-            idx, text, im = inputs
+        # precomputed bert is the same
+        idx, text, im = inputs
 
         # process
         im_embeddings = self.image_encoder(im)  # (b x N*K x 512)
@@ -108,21 +110,10 @@ class AM3(nn.Module):
             return im_embeddings
         else:
             B, NK, seq_len = text.shape
-            if self.text_encoder_type == "BERT":
-                # need to reshape batch for BERT input
-                bert_output = self.text_encoder(text.view(-1, seq_len),
-                                                attention_mask=attn_mask.view(
-                                                    -1, seq_len))
-                # get [CLS] token
-                text_encoding = bert_output[1].view(B, NK,
-                                                    -1)  # (b x N*K x 768)
-            elif self.text_encoder_type == "rand":
-                # get a random tensor as the embedding
-                # text_encoding = 2*torch.rand(B, NK, self.text_emb_dim) - 1
-                pass
-            else:
-                text_encoding = self.text_encoder(
-                    text)  # (B, N*K, text_emb_dim)
+            
+            # bert precomputed
+            text_encoding = self.text_encoder(
+                text)  # (B, N*K, text_emb_dim)
 
             if self.text_encoder_type == "rand":
                 text_embeddings = 2 * torch.rand(
@@ -179,9 +170,13 @@ class AM3(nn.Module):
         test_im_embeddings = self(test_inputs,
                                   im_only=True)  # only get image prototype
 
-        # TODO try using lambda = 0 or 1
-        # train_lamda = torch.ones_like(train_lamda).to(device)
-        # train_lamda = torch.zeros_like(train_lamda).to(device)
+        # lambda set to 0 or 1
+        if self.lamda_fixed == 0:
+            train_lamda = torch.zeros_like(train_lamda).to(device)
+        elif self.lamda_fixed == 1:
+            train_lamda = torch.ones_like(train_lamda).to(device)
+        else:
+            train_lamda = train_lamda
 
         # construct prototypes
         prototypes = utils.get_prototypes(train_im_embeddings,
@@ -249,7 +244,6 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                 task="train")
 
             # log
-            # TODO track lr etc as well if using scheduler
             wandb.log(
                 {
                     "train/acc": train_acc,
@@ -298,11 +292,15 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                 )
 
             # break after max iters or early stopping
-            if (batch_idx > args.epochs - 1) or (batch_idx - best_batch_idx >
+            if (batch_idx > args.epochs - 1) or (args.patience > 0 and batch_idx - best_batch_idx >
                                                  args.patience):
                 break
     except KeyboardInterrupt:
         pass
+
+    # load best model    
+    best_file = os.path.join(wandb.run.dir, "best.pth.tar")
+    model, _ = utils.load_checkpoint(model, opt, args.device, best_file)
 
     return model
 
@@ -323,7 +321,6 @@ def test_loop(args, model, test_dataloader, max_num_batches):
     - support_idx
     - support_lamdas
     """
-    # TODO need to fix number of tasks/episodes etc. depending on batch, num_ways etc.
 
     avg_test_acc = AverageMeter()
     avg_test_f1 = AverageMeter()

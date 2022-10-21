@@ -132,3 +132,12 @@ dmypy.json
 
 .tar.gz
 .json
+
+# folders
+data/
+results/
+checkpoints/
+
+# wandb
+.wandb
+wandb/

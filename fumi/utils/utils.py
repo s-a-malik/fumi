@@ -5,7 +5,7 @@ import os
 import shutil
 import wandb
 import argparse
-from ..models import am3, maml, fumi, clip
+from models import am3, maml, fumi, clip
 import numpy as np
 
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -21,49 +21,55 @@ def parser():
         description="Multimodal image classification")
 
     # data config
+    parser.add_argument("--wandb_entity",
+                        type=str,
+                        default="multimodal-image-cls",
+                        help="W&B entity")
+    parser.add_argument("--wandb_project",
+                        type=str,
+                        default="fumi",
+                        help="W&B project")
     parser.add_argument("--dataset",
                         type=str,
-                        default="zanim",
-                        help="Dataset to use")
+                        default="inat-anim",
+                        help="Dataset to use (inat-anim, supervised-inat-anim")
     parser.add_argument("--data_dir",
                         type=str,
                         default="./data",
                         help="Directory to use for data")
-    parser.add_argument(
-        "--json_path",
-        type=str,
-        default="train.json",
-        help="Location of the json file containing dataset annotations")
     parser.add_argument("--checkpoint",
                         type=str,
                         default=None,
                         help="Path to pretrained model")
     parser.add_argument("--log_dir",
                         type=str,
-                        default="./am3",
-                        help="Directory to use for logs and checkpoints")
+                        default="./results",
+                        help="Directory to use for results")
     parser.add_argument('--remove_stop_words',
                         action='store_true',
                         help="Whether to remove stop words")
+    parser.add_argument('--colab',
+                        action='store_true',
+                        help="Whether the script is running on Google Colab")
 
     # optimizer config
     parser.add_argument("--epochs",
                         type=int,
-                        default=5000,
+                        default=50000,
                         help="Number of meta-learning batches to train for")
     parser.add_argument("--optim", type=str, default="adam", help="Optimiser")
-    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=3e-5, help="Learning rate")
     parser.add_argument("--momentum",
                         type=float,
                         default=0.9,
                         help="Momentum for SGD")
     parser.add_argument("--batch_size",
                         type=int,
-                        default=5,
+                        default=4,
                         help="Number of tasks in mini-batch")
     parser.add_argument("--weight_decay",
                         type=float,
-                        default=0.0005,
+                        default=5e-4,
                         help="L2 regulariser")
     parser.add_argument("--num_warmup_steps",
                         type=float,
@@ -100,7 +106,7 @@ def parser():
     # model config
     parser.add_argument("--model",
                         type=str,
-                        default="am3",
+                        default="fumi",
                         help="Model to be trained")
     parser.add_argument("--prototype_dim",
                         type=int,
@@ -117,13 +123,15 @@ def parser():
                         help="Dimension of image embedding (if precomputed)")
     parser.add_argument("--im_hid_dim",
                         type=int,
-                        default=64,
+                        nargs='+',
+                        default=[256, 64],
                         help="Hidden dimension of image model")
     parser.add_argument(
         "--text_encoder",
         type=str,
+        choices=['glove', 'w2v', 'RNN', 'RNNhid', 'BERT', 'rand'],
         default="BERT",
-        help="Type of text embedding (glove, w2v, RNN, BERT, rand)")
+        help="Type of text embedding (glove, w2v, RNN, RNNhid, BERT, rand)")
     parser.add_argument(
         "--pooling_strat",
         type=str,
@@ -136,26 +144,26 @@ def parser():
         "--text_type",
         type=str,
         nargs="+",
-        default="label",
+        default=["description"],
         help=
         "What to use for text embedding (label, description or common_name) can take multiple arguments (appends the different text types) e.g. --text_type label description)"
     )
     parser.add_argument("--text_emb_dim",
                         type=int,
-                        default=512,
+                        default=768,
                         help="Dimension of text embedding (if precomputed)")
     parser.add_argument(
         "--text_hid_dim",
         type=int,
-        default=300,
+        default=256,
         help="Hidden dimension for NN mapping to prototypes and lamda")
     parser.add_argument("--dropout",
                         type=float,
-                        default=0.7,
+                        default=0.25,
                         help="Dropout rate")
     parser.add_argument("--step_size",
                         type=float,
-                        default=0.5,
+                        default=0.01,
                         help="MAML step size")
     parser.add_argument("--first_order",
                         action="store_true",
@@ -163,15 +171,25 @@ def parser():
     parser.add_argument(
         "--num_train_adapt_steps",
         type=int,
-        default=1,
+        default=5,
         help="Number of MAML inner train loop adaptation steps")
     parser.add_argument("--num_test_adapt_steps",
                         type=int,
-                        default=1,
+                        default=100,
                         help="Number of MAML inner test loop adaptation steps")
-    parser.add_argument("--shared_feats",
+    parser.add_argument("--init_all_layers",
                         action="store_true",
-                        help="Whether to share first layer weights in FUMI")
+                        help="Whether to initialise all (vs. last) layer weights in FUMI")
+    parser.add_argument("--norm_hypernet",
+                        action="store_true",
+                        help="Whether to normalize output of the FUMI hypernetwork (tanh)")
+    parser.add_argument("--hypernet_bias_init",
+                        action="store_true",
+                        help="Whether to initialise hypernet bias for policy")
+    parser.add_argument("--lamda_fixed",
+                        default=None,
+                        type=int,
+                        help="Lambda fixed for am3. Lambda = 0 is text only, Lambda = 1 is image only")
 
     # clip config
     parser.add_argument("--clip_latent_dim",
@@ -180,17 +198,17 @@ def parser():
                         help="Dimension of CLIP latent space")
 
     # run config
-    parser.add_argument("--seed", type=int, default=123, help="Random seed")
+    parser.add_argument("--seed", type=int, default=123, help="patience for early stopping")
     parser.add_argument("--patience",
                         type=int,
-                        default=100,
+                        default=10000,
                         help="Early stopping patience")
     parser.add_argument(
         "--eval_freq",
         type=int,
-        default=20,
+        default=2500,
         help="Number of batches between validation/checkpointing")
-    parser.add_argument("--experiment",
+    parser.add_argument("--wandb_experiment",
                         type=str,
                         default="debug",
                         help="Name for experiment (for wandb group)")
@@ -205,6 +223,9 @@ def parser():
     parser.add_argument("--disable_cuda",
                         action="store_true",
                         help="don't use GPU")
+    parser.add_argument("--wandb_offline", 
+                        action="store_true",
+                        help="don't save to wandb")
     return parser
 
 
@@ -215,7 +236,7 @@ def init_model(args, dictionary, watch=True):
     if args.model == "maml":
         model = maml.PureImageNetwork(im_embed_dim=args.im_emb_dim,
                                       n_way=args.num_ways,
-                                      hidden=args.im_hid_dim)
+                                      hidden_dims=args.im_hid_dim)
     elif args.model == "fumi":
         model = fumi.FUMI(n_way=args.num_ways,
                           im_emb_dim=args.im_emb_dim,
@@ -223,9 +244,13 @@ def init_model(args, dictionary, watch=True):
                           text_encoder=args.text_encoder,
                           text_emb_dim=args.text_emb_dim,
                           text_hid_dim=args.text_hid_dim,
+                          dropout_rate=args.dropout,
                           dictionary=dictionary,
                           pooling_strat=args.pooling_strat,
-                          shared_feats=args.shared_feats)
+                          init_all_layers=args.init_all_layers,
+                          norm_hypernet=args.norm_hypernet,
+                          fine_tune=args.fine_tune,
+                          init_bias=args.hypernet_bias_init)
     elif args.model == "clip":
         model = clip.CLIP(text_input_dim=args.text_emb_dim,
                           image_input_dim=args.im_emb_dim,
@@ -240,7 +265,8 @@ def init_model(args, dictionary, watch=True):
                         dropout=args.dropout,
                         fine_tune=args.fine_tune,
                         dictionary=dictionary,
-                        pooling_strat=args.pooling_strat)
+                        pooling_strat=args.pooling_strat,
+                        lamda_fixed=args.lamda_fixed)
 
     if watch:
         wandb.watch(model, log="all")  #  for tracking gradients etc.
@@ -386,9 +412,11 @@ def save_checkpoint(checkpoint_dict: dict, is_best: bool):
     checkpoint_file = os.path.join(wandb.run.dir, "ckpt.pth.tar")
     best_file = os.path.join(wandb.run.dir, "best.pth.tar")
     torch.save(checkpoint_dict, checkpoint_file)
+    wandb.save(checkpoint_file)
 
     if is_best:
         shutil.copyfile(checkpoint_file, best_file)
+        wandb.save(best_file)
 
 
 def load_checkpoint(model, optimizer, device, checkpoint_file: str):
@@ -407,7 +435,7 @@ def load_checkpoint(model, optimizer, device, checkpoint_file: str):
     optimizer.load_state_dict(checkpoint["optimizer"])
     print(
         f"Loaded {checkpoint_file}, "
-        f"trained to epoch {checkpoint['batch_idx']} with best loss {checkpoint['best_loss']}"
+        f"trained to epoch {checkpoint['batch_idx']} with best loss (acc for CLIP) {checkpoint['best_loss']}"
     )
 
     return model, optimizer

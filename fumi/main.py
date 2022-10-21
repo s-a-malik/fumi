@@ -1,7 +1,7 @@
 import os
 import sys
-import argparse
 import wandb
+import random
 
 import numpy as np
 import pandas as pd
@@ -13,24 +13,20 @@ import models.maml as maml
 import models.fumi as fumi
 import models.clip as clip
 from dataset.data import get_dataset
-import utils
+import utils.utils as utils
 
 
 def main(args):
-    # random seeds
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-    # TODO dataloader random seeding is special - if using augmentations etc. need to be careful
 
     # set up directories and logs
     results_path = f"{args.log_dir}/results"
     os.makedirs(results_path, exist_ok=True)
-    # TODO changing the dir doesn't seem to work on colab
-    os.environ["GENSIM_DATA_DIR"] = f"{args.log_dir}/word_embeddings"
+
     job_type = "eval" if args.evaluate else "train"
-    run = wandb.init(entity="multimodal-image-cls",
-                     project=args.model,
-                     group=args.experiment,
+    os.environ['WANDB_MODE'] = 'offline' if args.wandb_offline else 'online' 
+    run = wandb.init(entity=args.wandb_entity,
+                     project=args.wandb_project,
+                     group=args.wandb_experiment,
                      job_type=job_type,
                      save_code=True)
     wandb.config.update(args)
@@ -49,11 +45,16 @@ def main(args):
 
     # load datasets
     train_loader, val_loader, test_loader, dictionary = get_dataset(args)
-    # TODO fix this to give exactly 1000 episodes. Change in test dataloader probs.
     max_test_batches = int(args.num_ep_test / args.batch_size)
+
+    # random seeds
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
 
     # initialise model and optim
     model = utils.init_model(args, dictionary)
+    print(model)
     optimizer = utils.init_optim(args, model)
 
     # load previous state
@@ -78,12 +79,12 @@ def main(args):
     if not args.evaluate:
         if args.model == "maml":
             model = maml.training_run(args, model, optimizer, train_loader,
-                                      val_loader, max_test_batches)
+                                      val_loader, max_test_batches // 2)
         elif args.model == "fumi":
             model = fumi.training_run(args, model, optimizer, train_loader,
-                                      val_loader, max_test_batches)
+                                      val_loader, max_test_batches // 2)
         elif args.model == 'clip':
-            clip.training_run(args,
+            model = clip.training_run(args,
                               model,
                               optimizer,
                               train_loader,
@@ -91,7 +92,7 @@ def main(args):
                               n_epochs=args.epochs)
         else:
             model = am3.training_run(args, model, optimizer, train_loader,
-                                     val_loader, max_test_batches)
+                                     val_loader, max_test_batches // 2)
 
     # test
     if args.model in ["maml", "fumi"]:
@@ -143,6 +144,7 @@ def parse_args():
 
     args.device = torch.device("cuda") if (not args.disable_cuda) and \
         torch.cuda.is_available() else torch.device("cpu")
+    print(f"running on device {args.device}")
 
     return args
 

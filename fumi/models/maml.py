@@ -8,21 +8,25 @@ from collections import OrderedDict
 from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
 from torchmeta.utils.gradient_based import gradient_update_parameters
 
-from ..utils.average_meter import AverageMeter
-from ..utils import utils as utils
+from utils.average_meter import AverageMeter
+from utils import utils as utils
 
 
 class PureImageNetwork(MetaModule):
-    def __init__(self, im_embed_dim=2048, n_way=5, hidden=64):
+    def __init__(self, im_embed_dim=2048, n_way=5, hidden_dims=None):
         super(PureImageNetwork, self).__init__()
         self.im_embed_dim = im_embed_dim
         self.n_way = n_way
-        self.hidden = hidden
 
-        self.net = MetaSequential(
-            OrderedDict([('lin1', MetaLinear(im_embed_dim, hidden)),
-                         ('relu', nn.ReLU()),
-                         ('lin2', MetaLinear(hidden, n_way))]))
+        layers = OrderedDict()
+        in_dim = im_embed_dim
+        if hidden_dims != None:
+            for i, hid_dim in enumerate(hidden_dims):
+                layers['lin_'+str(i)] = MetaLinear(in_dim, hid_dim)
+                layers['relu_'+str(i)] = nn.ReLU()
+                in_dim = hid_dim
+        layers['lin_final'] = MetaLinear(in_dim, n_way)
+        self.net = MetaSequential(layers)
 
     def forward(self, inputs, params=None):
         logits = self.net(inputs, params=self.get_subdict(params, 'net'))
@@ -44,6 +48,8 @@ def training_run(args, model, optimizer, train_loader, val_loader,
 
     try:
         # Training loop
+        t = tqdm(total=args.eval_freq, leave=True, position=0, desc='Train')
+        t.refresh()
         for batch_idx, batch in enumerate(train_loader):
             train_loss, train_acc = evaluate(args=args,
                                              model=model,
@@ -51,6 +57,7 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                                              optimizer=optimizer,
                                              task="train")
 
+            t.update()
             wandb.log(
                 {
                     "train/acc": train_acc,
@@ -60,7 +67,7 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                 step=batch_idx)
 
             # Eval on validation set periodically
-            if batch_idx % args.eval_freq == 0:
+            if batch_idx % args.eval_freq == 0 and batch_idx != 0:
                 val_loss, val_acc = test_loop(args, model, val_loader,
                                               max_test_batches)
                 is_best = val_loss < best_loss
@@ -86,6 +93,9 @@ def training_run(args, model, optimizer, train_loader, val_loader,
                     f"\nBatch {batch_idx+1}/{args.epochs}: \ntrain/loss: {train_loss}, train/acc: {train_acc}"
                     f"\nval/loss: {val_loss}, val/acc: {val_acc}")
 
+                t = tqdm(total=args.eval_freq, leave=True, position=0, desc='Train')
+                t.refresh()
+
             # break after max iters or early stopping
             if (batch_idx > args.epochs - 1) or (
                     args.patience > 0
@@ -108,7 +118,7 @@ def test_loop(args, model, test_loader, max_num_batches):
     avg_test_acc = AverageMeter()
     avg_test_loss = AverageMeter()
     for batch_idx, batch in enumerate(
-            tqdm(test_loader, total=max_num_batches, position=0, leave=True)):
+            tqdm(test_loader, total=max_num_batches, position=0, leave=True, desc='Test')):
         test_loss, test_acc = evaluate(args=args,
                                        model=model,
                                        batch=batch,
@@ -135,12 +145,12 @@ def evaluate(args, model, batch, optimizer, task="train"):
 
     # Support set
     train_inputs, train_targets = batch['train']
-    train_inputs = train_inputs[3].to(device=args.device)
+    train_inputs = train_inputs[2].to(device=args.device)
     train_targets = train_targets.to(device=args.device)
 
     # Query set
     test_inputs, test_targets = batch['test']
-    test_inputs = test_inputs[3].to(device=args.device)
+    test_inputs = test_inputs[2].to(device=args.device)
     test_targets = test_targets.to(device=args.device)
 
     outer_loss = torch.tensor(0., device=args.device)

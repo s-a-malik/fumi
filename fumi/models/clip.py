@@ -1,13 +1,11 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torchvision.models as models
-import torch.utils.data as data
+
+import os
 
 import wandb
-from ..utils.average_meter import AverageMeter
-from ..utils import utils as utils
+from utils import utils as utils
 
 
 class CLIP(nn.Module):
@@ -26,7 +24,6 @@ class CLIP(nn.Module):
         self.image_fc2 = nn.Linear(latent_dim, latent_dim)
 
     def forward(self, text, image):
-        #print(text.shape, image.shape, self.text_input_dim, self.image_input_dim)
         # [batch_size, latent_dim]
         text_latent = self.text_fc2(self.text_af(self.text_fc(text)))
         image_latent = self.image_fc2(self.image_af(self.image_fc(image)))
@@ -38,9 +35,7 @@ class CLIP(nn.Module):
         image_norms_repeated = image_norms.repeat(len(text), 1).T
 
         cosine_sim_unnormalised = text_latent @ image_latent.T
-        #print(cosine_sim_unnormalised.shape, text_norms_repeated.shape, image_norms_repeated.shape)
         cosine_sim_normalised = cosine_sim_unnormalised / text_norms_repeated / image_norms_repeated.T
-        #print(text_norms_repeated.shape, image_norms_repeated.shape, cosine_sim_normalised.shape)
 
         return cosine_sim_normalised
 
@@ -61,9 +56,7 @@ def evaluate(args, model, data):
         batch_ids = batch[2]
 
         batch_size = batch_text.shape[0]
-
         shot_i = 0
-        # TODO - Append leftovers to next batch
         while shot_i + n_ways < batch_size:
             shot_text = batch_text[shot_i].unsqueeze(0)
             shot_image = batch_image[shot_i:shot_i + n_ways]
@@ -77,15 +70,16 @@ def evaluate(args, model, data):
             total += 1
 
             shot_i += n_ways
-
+        
     return correct / total
 
 
 def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
     device = args.device
 
-    init_val_acc = evaluate(args, model, val_loader)
-    print('init val_acc', init_val_acc)
+    best_acc = evaluate(args, model, val_loader)
+    best_epoch = 0
+    print('init val_acc', best_acc)
 
     for epoch in range(n_epochs):
         model.train()
@@ -96,7 +90,6 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
             batch_image = batch[0].to(device)
             batch_ids = batch[2]
 
-            # TODO - Append discarded pairs to next batch (?)
             # Discard repeated classes
             _, unique_idxs = torch.LongTensor(
                 np.unique(batch_ids, return_index=True)).to(device)
@@ -108,12 +101,7 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
             optimizer.zero_grad()
 
             output = model(batch_text, batch_image)
-
-            #target = np.zeros((batch_size, batch_size))
-            #for i in range(batch_size):
-            #  target[i] = (batch_ids[i] == batch_ids)
-            #target = torch.Tensor(target.astype(int) * 2 - 1).to(device)
-
+            
             # Loss - Symmetric cross entropy
             labels = torch.arange(batch_size).to(device)
             loss_1 = nn.CrossEntropyLoss()(output, labels)
@@ -127,3 +115,27 @@ def training_run(args, model, optimizer, train_loader, val_loader, n_epochs):
         val_acc = evaluate(args, model, val_loader)
         print('epoch', epoch, 'val_acc', val_acc)
         wandb.log({'val/acc': val_acc}, step=epoch)
+        is_best = val_acc > best_acc
+        if is_best:
+            best_acc = val_acc
+            best_epoch = epoch
+
+        # save checkpoint
+        checkpoint_dict = {
+            "batch_idx": epoch,
+            "state_dict": model.state_dict(),
+            "best_loss": best_acc,
+            "optimizer": optimizer.state_dict(),
+            "args": vars(args)
+        }
+        utils.save_checkpoint(checkpoint_dict, is_best)
+
+        # break after max iters or early stopping
+        if (args.patience > 0 and epoch - best_epoch > args.patience):
+            break
+
+    # load best model    
+    best_file = os.path.join(wandb.run.dir, "best.pth.tar")
+    model, _ = utils.load_checkpoint(model, optimizer, args.device, best_file)
+
+    return model
