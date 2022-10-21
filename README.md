@@ -1,4 +1,4 @@
-# Improving Few-Shot Learning using Task-Informed Meta-Initialisation
+# Multi-modal Fusion by Meta-Initialisation
 
 Authors: Matthew Jackson*, Shreshth Malik*, Michael Matthews, and Yousuf Mohamed-Ahmed
 
