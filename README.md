@@ -1,6 +1,8 @@
 # Multi-modal Fusion by Meta-Initialisation
 
-Authors: Matthew Jackson*, Shreshth Malik*, Michael Matthews, and Yousuf Mohamed-Ahmed
+Authors: Matthew Jackson*, Shreshth Malik*, Michael Matthews, and Yousuf Mohamed-Ahmed 
+
+(*Equal Contribution)
 
 Presented as a poster at FARSCOPE Robotics Conference 2022, Bristol, UK (Best Poster award). [Arxiv](https://arxiv.org/abs/2210.04843).
 
