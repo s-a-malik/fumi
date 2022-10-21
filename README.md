@@ -1,6 +1,6 @@
 # Multi-modal Fusion by Meta-Initialisation
 
-Authors: Matthew Jackson*, Shreshth Malik*, Michael Matthews, and Yousuf Mohamed-Ahmed 
+_Matthew Jackson*, Shreshth Malik*, Michael Matthews, and Yousuf Mohamed-Ahmed_ 
 
 (*Equal Contribution)
 
