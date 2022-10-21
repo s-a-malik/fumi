@@ -2,13 +2,11 @@
 
 Authors: Matthew Jackson*, Shreshth Malik*, Michael Matthews, and Yousuf Mohamed-Ahmed
 
-[Arxiv](https://arxiv.org/abs/2210.04843).
-
-Presented as a poster at FARSCOPE Robotics Conference 2022, Bristol, UK (Best Poster award).
+Presented as a poster at FARSCOPE Robotics Conference 2022, Bristol, UK (Best Poster award). [Arxiv](https://arxiv.org/abs/2210.04843).
 
 ## Overview
 
-This repository provides a framework to train and evaluate multi-modal models for few-shot classification on our iNat-Anim dataset.
+This repository provides a framework to train and evaluate multi-modal models, including the proposed Fusion by Meta-Initialisation (FuMI) model, for few-shot classification on the iNat-Anim dataset.
 
 ## Dataset
 
@@ -25,7 +23,7 @@ There currently is support for [AM3](https://proceedings.neurips.cc/paper/2019/h
 
 ## Usage
 
-First download the requirements and login to [wandb](https://wandb.ai/) (for logging): `pip install -r requirements.txt; wandb login <YOUR_API_KEY>`.
+First download and unzip the [data](https://doi.org/10.5281/zenodo.6703088), install the requirements, and login to [wandb](https://wandb.ai/) (for logging): `pip install -r requirements.txt; wandb login <YOUR_API_KEY>`.
 
 All experimental conditions and hyperparameters are set via command line arguments (e.g. you can change the text embedding model and use common species names instead of descriptions). Full predictions on test tasks are saved to the path given by the `--log_dir` argument, and all metrics (accuracy/prec/rec/F1) are saved to wandb.
 
@@ -43,8 +41,6 @@ python fumi/main.py --data_dir "./data" \
 ```
 
 Note, to train clip, you must also set the `--dataset supervised-inat-anim` flag as well.
-
-A full script that can be run from google colab is in the `notebooks` directory.
 
 ## Cite
 
